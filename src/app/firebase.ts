@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, User } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -54,6 +55,7 @@ try {
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // Authentication functions
 export const signInUser = async (): Promise<User> => {
@@ -109,4 +111,10 @@ export const saveTrainingData = async (userId: string, message: Message): Promis
     timestamp: new Date().toISOString(),
     processed: false
   });
-}; 
+};
+
+export async function uploadImageAndGetUrl(file: File, userId: string) {
+  const storageRef = ref(storage, `chat_images/${userId}/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+} 

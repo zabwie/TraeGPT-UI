@@ -3,13 +3,32 @@
 :root {
   --sidebar-bg: #101014;
   --sidebar-border: #23232a;
+  --sidebar-icon-bg: #23232a;
+  --sidebar-icon-color: #e4e6eb;
+  --sidebar-hover-bg: #23232a;
+  --sidebar-selected-bg: #23232a;
   --chat-bg: #212121ff; /* eerie black */
   --bubble-user: #23232a;
   --bubble-ai: #23232a;
   --input-bg: #18181c;
   --input-border: #23232a;
+  --input-bar-bg: #23232a;
+  --input-bar-border: #23232a;
+  --input-bar-hover-bg: #28282d;
+  --button-bg: #23232a;
+  --button-hover-bg: #28282d;
+  --button-disabled-bg: #23232a99;
   --text-main: #e4e6eb;
   --text-secondary: #b0b3b8;
+  --text-label: #a3e635;
+  --text-label-bg: #23232a;
+  --text-label-border: #3f6212;
+  --text-warning: #fde047;
+  --text-warning-bg: #23232a;
+  --text-warning-border: #facc15;
+  --text-success: #4ade80;
+  --text-success-bg: #23232a;
+  --text-success-border: #22c55e;
   --radius: 16px;
   --eerie-black: #212121ff;
 }

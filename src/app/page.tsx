@@ -582,8 +582,10 @@ export default function Home() {
             className="flex-1 overflow-y-auto px-6 py-6 space-y-4 pb-0"
           >
             {messages.length === 0 && (
-              <div className="text-center text-gray-400 mt-20">
-                <p className="text-lg">Ready when you are.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '60vh', width: '100%' }}>
+                <p style={{ color: 'var(--text-main)', fontSize: '2rem', fontWeight: 500, textAlign: 'center', margin: 0 }}>
+                  How can I help?
+                </p>
               </div>
             )}
             {messages.map((msg, i) => renderMessage(msg, i, i === messages.length - 1 && msg.role === "assistant"))}

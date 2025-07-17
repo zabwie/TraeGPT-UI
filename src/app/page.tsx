@@ -12,6 +12,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [ocrLang, setOcrLang] = useState("en");
   const [categories, setCategories] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function Home() {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages, loading, chatSessions]);
+  }, [messages, loading]);
 
   // Auto-resize textarea
   React.useEffect(() => {
@@ -103,6 +104,7 @@ export default function Home() {
     setMessages([]);
     setInput("");
     setImage(null);
+    setImagePreviewUrl(null);
     setError(null);
     setShowTools(false);
     setShowPlusMenu(false);
@@ -117,6 +119,7 @@ export default function Home() {
       setCurrentSessionId(sessionId);
       setInput("");
       setImage(null);
+      setImagePreviewUrl(null);
       setError(null);
       setShowTools(false);
       setShowPlusMenu(false);
@@ -178,21 +181,36 @@ export default function Home() {
         }
         
         const result = await res.json();
+        // Compose a summary string for the AI
+        let summary = "Image analysis:";
+        if (result.classification && result.classification.length > 0) {
+          summary += ` Classification: ${result.classification.map((c: { class: string; confidence: number }) => c.class).join(", ")}.`;
+        }
+        if (result.object_detection && result.object_detection.length > 0) {
+          summary += ` Objects detected: ${result.object_detection.map((o: { class: string; confidence: number }) => o.class).join(", ")}.`;
+        }
+        if (result.caption) {
+          summary += ` Caption: ${result.caption}`;
+        }
+        if (result.text_extraction && result.text_extraction.length > 0) {
+          summary += ` Text found: ${result.text_extraction.map((t: { text: string; confidence: number }) => t.text).join(", ")}.`;
+        }
         newMessages = [
           ...newMessages,
           {
             role: "user",
-            content: "[Image uploaded]",
-            imageUrl: URL.createObjectURL(image),
+            content: "[Image uploaded]"
+            // Do NOT include imageUrl: imagePreviewUrl or blob URLs in chat history
           },
           {
             role: "assistant",
-            content: "[Image analysis result]",
+            content: summary,
             imageResult: result,
           },
         ];
         setMessages(newMessages);
         setImage(null);
+        setImagePreviewUrl(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       } catch (e) {
         console.error('Image analysis error:', e);
@@ -274,6 +292,7 @@ export default function Home() {
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files[0]) {
       setImage(e.target.files[0]);
+      setImagePreviewUrl(URL.createObjectURL(e.target.files[0]));
       setShowPlusMenu(false);
     }
   }
@@ -286,6 +305,16 @@ export default function Home() {
   }
 
   function renderMessage(msg: Message, i: number) {
+    // Only show image preview for the current image before upload/analysis
+    if (i === messages.length && imagePreviewUrl) {
+      return (
+        <div key={i} className="flex justify-end mb-4">
+          <div className="max-w-xs">
+            <Image src={imagePreviewUrl} alt="preview" width={320} height={240} className="rounded-lg shadow-sm" />
+          </div>
+        </div>
+      );
+    }
     if (msg.imageUrl) {
       return (
         <div key={i} className="flex justify-end mb-4">
@@ -637,12 +666,13 @@ export default function Home() {
                 </div>
               </div>
               
-              {image && (
+              {imagePreviewUrl && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span>Image ready to upload</span>
+                  <Image src={imagePreviewUrl} alt="preview" width={80} height={60} className="rounded ml-2" />
                 </div>
               )}
             </div>

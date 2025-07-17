@@ -6,7 +6,22 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   imageUrl?: string;
-  imageResult?: any;
+  imageResult?: {
+    caption?: string;
+    object_detection?: Array<{
+      class: string;
+      confidence: number;
+    }>;
+    text_extraction?: Array<{
+      text: string;
+      confidence: number;
+    }>;
+    classification?: Array<{
+      class: string;
+      confidence: number;
+    }>;
+    analysis_time?: number;
+  };
 }
 
 export interface ChatSession {

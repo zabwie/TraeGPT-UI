@@ -77,7 +77,7 @@ export default function Home() {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages, loading]);
+  }, [messages, loading, chatSessions]);
 
   // Auto-resize textarea
   React.useEffect(() => {
@@ -303,13 +303,13 @@ export default function Home() {
             <h3 className="text-lg font-medium text-gray-100 mb-3">Image Analysis Results</h3>
             
             {/* Classification */}
-            {result.classification && Object.keys(result.classification).length > 0 && (
+            {result.classification && result.classification.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-300 mb-2">Classification:</h4>
                 <div className="flex flex-wrap gap-2">
-                  {Object.entries(result.classification).map(([category, confidence]) => (
-                    <span key={category} className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full text-xs">
-                      {category}: {(confidence as number * 100).toFixed(1)}%
+                  {result.classification.map((item: { class: string; confidence: number }, idx: number) => (
+                    <span key={idx} className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full text-xs">
+                      {item.class}: {(item.confidence * 100).toFixed(1)}%
                     </span>
                   ))}
                 </div>
@@ -321,7 +321,7 @@ export default function Home() {
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-300 mb-2">Objects Detected:</h4>
                 <div className="flex flex-wrap gap-2">
-                  {result.object_detection.map((obj: any, idx: number) => (
+                  {result.object_detection.map((obj: { class: string; confidence: number }, idx: number) => (
                     <span key={idx} className="bg-green-900 text-green-200 px-2 py-1 rounded-full text-xs">
                       {obj.class}: {(obj.confidence * 100).toFixed(1)}%
                     </span>
@@ -348,9 +348,9 @@ export default function Home() {
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-300 mb-2">Text Found:</h4>
                 <div className="bg-gray-700 p-3 rounded-lg">
-                  {result.text_extraction.map((text: any, idx: number) => (
+                  {result.text_extraction.map((text: { text: string; confidence: number }, idx: number) => (
                     <p key={idx} className="text-sm text-gray-200">
-                      "{text.text}" ({(text.confidence * 100).toFixed(1)}% confidence)
+                      &quot;{text.text}&quot; ({(text.confidence * 100).toFixed(1)}% confidence)
                     </p>
                   ))}
                 </div>

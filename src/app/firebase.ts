@@ -76,8 +76,10 @@ export const getCurrentUser = (): User | null => {
 // Chat session functions
 export const saveChatSession = async (userId: string, session: ChatSession): Promise<void> => {
   const sessionRef = doc(db, 'users', userId, 'chatSessions', session.id);
+  const safeMessages = session.messages.map((msg) => flattenNestedArrays(msg));
   await setDoc(sessionRef, {
     ...session,
+    messages: safeMessages,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString()
   });
@@ -117,4 +119,24 @@ export async function uploadImageAndGetUrl(file: File, userId: string) {
   const storageRef = ref(storage, `chat_images/${userId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
+}
+
+function deepFlattenArray(arr: any[]): any[] {
+  return arr.reduce((acc, val) => 
+    Array.isArray(val) ? acc.concat(deepFlattenArray(val)) : acc.concat(val)
+  , []);
+}
+
+function flattenNestedArrays(obj: any): any {
+  if (Array.isArray(obj)) {
+    // Recursively flatten all nested arrays
+    return deepFlattenArray(obj.map(flattenNestedArrays));
+  } else if (typeof obj === 'object' && obj !== null) {
+    const newObj: any = {};
+    for (const key in obj) {
+      newObj[key] = flattenNestedArrays(obj[key]);
+    }
+    return newObj;
+  }
+  return obj;
 } 

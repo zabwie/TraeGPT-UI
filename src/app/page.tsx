@@ -285,6 +285,7 @@ export default function Home() {
       );
     }
     if (msg.imageUrl) {
+      console.log("Rendering image with URL:", msg.imageUrl);
       return (
         <div key={i} className="flex justify-end mb-4">
           <div className="max-w-xs">

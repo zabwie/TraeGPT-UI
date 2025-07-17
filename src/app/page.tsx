@@ -49,6 +49,7 @@ export default function Home() {
   const [userInterests, setUserInterests] = useState("");
   const [answerStyle, setAnswerStyle] = useState("");
   const [customPersonality, setCustomPersonality] = useState("");
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
   // Handle authentication state
   useEffect(() => {
@@ -489,6 +490,11 @@ export default function Home() {
     );
   }
 
+  function handleSaveSettings() {
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 1500);
+  }
+
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--chat-bg)' }}>
       {/* Left Sidebar - Fixed */}
@@ -693,6 +699,16 @@ export default function Home() {
                         disabled={loading}
                       />
                     </div>
+                  </div>
+                  <div className="col-span-full flex items-center gap-3 mt-4">
+                    <button
+                      onClick={handleSaveSettings}
+                      style={{ background: 'var(--button-bg)', color: 'var(--text-main)', border: 'none', borderRadius: 'var(--radius)', padding: '10px 24px', cursor: 'pointer', fontWeight: 500, fontSize: '1rem', transition: 'background 0.2s' }}
+                      disabled={loading}
+                    >
+                      Save
+                    </button>
+                    {settingsSaved && <span style={{ color: 'var(--text-success)', fontSize: '0.95rem' }}>Saved!</span>}
                   </div>
                 </div>
               )}

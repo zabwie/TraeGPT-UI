@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, User } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, deleteDoc, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export interface Message {
@@ -123,6 +123,20 @@ export async function uploadImageAndGetUrl(file: File, userId: string) {
   await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
 }
+
+// User preferences functions
+// Save user preferences (personalization settings)
+export const saveUserPreferences = async (userId: string, prefs: any): Promise<void> => {
+  const prefsRef = doc(db, 'users', userId, 'preferences', 'main');
+  await setDoc(prefsRef, prefs, { merge: true });
+};
+
+// Load user preferences
+export const loadUserPreferences = async (userId: string): Promise<any> => {
+  const prefsRef = doc(db, 'users', userId, 'preferences', 'main');
+  const docSnap = await getDoc(prefsRef);
+  return docSnap.exists() ? docSnap.data() : {};
+};
 
 function deepFlattenArray(arr: unknown[]): unknown[] {
   return arr.reduce<unknown[]>((acc, val) =>

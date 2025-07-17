@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import Image from "next/image";
-import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, saveTrainingData, Message, ChatSession, uploadImageAndGetUrl } from './firebase';
+import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, saveTrainingData, Message, ChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -55,6 +55,8 @@ export default function Home() {
   const [savedUserInterests, setSavedUserInterests] = useState("");
   const [savedAnswerStyle, setSavedAnswerStyle] = useState("");
   const [savedCustomPersonality, setSavedCustomPersonality] = useState("");
+  // Add loading state for preferences
+  const [prefsLoading, setPrefsLoading] = useState(false);
 
   // Handle authentication state
   useEffect(() => {
@@ -101,6 +103,24 @@ export default function Home() {
       }
     }
   }, [messages, currentSessionId, user]);
+
+  // Load preferences on login
+  useEffect(() => {
+    if (user) {
+      setPrefsLoading(true);
+      loadUserPreferences(user.uid).then(prefs => {
+        setUserName(prefs.userName || "");
+        setUserInterests(prefs.userInterests || "");
+        setAnswerStyle(prefs.answerStyle || "");
+        setCustomPersonality(prefs.customPersonality || "");
+        setSavedUserName(prefs.userName || "");
+        setSavedUserInterests(prefs.userInterests || "");
+        setSavedAnswerStyle(prefs.answerStyle || "");
+        setSavedCustomPersonality(prefs.customPersonality || "");
+        setPrefsLoading(false);
+      }).catch(() => setPrefsLoading(false));
+    }
+  }, [user]);
 
   React.useEffect(() => {
     // Scroll to bottom on new message
@@ -172,12 +192,19 @@ export default function Home() {
     }
   }
 
-  function handleSaveSettings() {
+  async function handleSaveSettings() {
+    if (!user) return;
     setSettingsSaved(true);
     setSavedUserName(userName);
     setSavedUserInterests(userInterests);
     setSavedAnswerStyle(answerStyle);
     setSavedCustomPersonality(customPersonality);
+    await saveUserPreferences(user.uid, {
+      userName,
+      userInterests,
+      answerStyle,
+      customPersonality
+    });
     setTimeout(() => setSettingsSaved(false), 1500);
   }
 
@@ -646,6 +673,16 @@ export default function Home() {
               {/* Tools Panel */}
               {showTools && (
                 <div style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }} className="mb-4 p-4 rounded-lg">
+                  {prefsLoading && (
+                    <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem', textAlign: 'center', fontWeight: 500 }}>
+                      Loading preferences...
+                    </div>
+                  )}
+                  {!user && (
+                    <div style={{ color: 'var(--text-warning)', marginBottom: '1rem', textAlign: 'center', fontWeight: 500 }}>
+                      Please log in to save your preferences.
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Your Name</label>
@@ -656,7 +693,7 @@ export default function Home() {
                         className="w-full px-3 py-2 rounded-lg"
                         style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
                         placeholder="e.g. Zabi"
-                        disabled={loading}
+                        disabled={loading || !user || prefsLoading}
                       />
                     </div>
                     <div>
@@ -668,7 +705,7 @@ export default function Home() {
                         className="w-full px-3 py-2 rounded-lg"
                         style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
                         placeholder="e.g. coding, music, AI"
-                        disabled={loading}
+                        disabled={loading || !user || prefsLoading}
                       />
                     </div>
                     <div>
@@ -678,7 +715,7 @@ export default function Home() {
                         onChange={e => setAnswerStyle(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg"
                         style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
-                        disabled={loading}
+                        disabled={loading || !user || prefsLoading}
                       >
                         <option value="">No preference</option>
                         <option value="friendly">Friendly</option>
@@ -695,7 +732,7 @@ export default function Home() {
                         className="w-full px-3 py-2 rounded-lg"
                         style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)', minHeight: '60px' }}
                         placeholder="e.g. Always answer like a pirate!"
-                        disabled={loading}
+                        disabled={loading || !user || prefsLoading}
                       />
                     </div>
                     {/* Existing OCR and CLIP fields below */}
@@ -727,8 +764,8 @@ export default function Home() {
                   <div className="col-span-full flex items-center gap-3 mt-4">
                     <button
                       onClick={handleSaveSettings}
-                      style={{ background: 'var(--button-bg)', color: 'var(--text-main)', border: 'none', borderRadius: 'var(--radius)', padding: '10px 24px', cursor: 'pointer', fontWeight: 500, fontSize: '1rem', transition: 'background 0.2s' }}
-                      disabled={loading}
+                      style={{ background: 'var(--button-bg)', color: 'var(--text-main)', border: 'none', borderRadius: 'var(--radius)', padding: '10px 24px', cursor: !user ? 'not-allowed' : 'pointer', fontWeight: 500, fontSize: '1rem', transition: 'background 0.2s' }}
+                      disabled={loading || !user || prefsLoading}
                     >
                       Save
                     </button>

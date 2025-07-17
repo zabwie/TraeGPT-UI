@@ -1,23 +1,9 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { auth, signInUser, getCurrentUser, saveChatSession, loadChatSessions, deleteChatSession, saveTrainingData } from './firebase';
+import Image from "next/image";
+import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, saveTrainingData, Message, ChatSession } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  imageUrl?: string;
-  imageResult?: any;
-}
-
-interface ChatSession {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -143,7 +129,7 @@ export default function Home() {
     if (!user) return;
     
     try {
-      await deleteChatSession(user.uid, sessionId);
+      await fbDeleteChatSession(user.uid, sessionId);
       setChatSessions(prev => prev.filter(s => s.id !== sessionId));
       if (currentSessionId === sessionId) {
         handleNewChat();
@@ -171,8 +157,7 @@ export default function Home() {
       // Save user message for training
       await saveTrainingData(user.uid, {
         role: "user",
-        content: input,
-        timestamp: new Date().toISOString()
+        content: input
       });
     }
     
@@ -243,8 +228,7 @@ export default function Home() {
         // Save assistant message for training
         await saveTrainingData(user.uid, {
           role: "assistant",
-          content: assistantMessage.content,
-          timestamp: new Date().toISOString()
+          content: assistantMessage.content
         });
         
         // Create or update chat session
@@ -306,7 +290,7 @@ export default function Home() {
       return (
         <div key={i} className="flex justify-end mb-4">
           <div className="max-w-xs">
-            <img src={msg.imageUrl} alt="uploaded" className="rounded-lg shadow-sm" />
+            <Image src={msg.imageUrl} alt="uploaded" width={320} height={240} className="rounded-lg shadow-sm" />
           </div>
         </div>
       );

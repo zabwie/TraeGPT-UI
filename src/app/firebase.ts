@@ -36,6 +36,14 @@ export interface ChatSession {
   updatedAt: Date;
 }
 
+// Define a type for user preferences
+export interface UserPreferences {
+  userName?: string;
+  userInterests?: string;
+  answerStyle?: string;
+  customPersonality?: string;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyAIxQzSwBC1qD98vdt1hmJwAFYTYerYGsw",
   authDomain: "traegpt-3fc47.firebaseapp.com",
@@ -126,16 +134,16 @@ export async function uploadImageAndGetUrl(file: File, userId: string) {
 
 // User preferences functions
 // Save user preferences (personalization settings)
-export const saveUserPreferences = async (userId: string, prefs: any): Promise<void> => {
+export const saveUserPreferences = async (userId: string, prefs: UserPreferences): Promise<void> => {
   const prefsRef = doc(db, 'users', userId, 'preferences', 'main');
   await setDoc(prefsRef, prefs, { merge: true });
 };
 
 // Load user preferences
-export const loadUserPreferences = async (userId: string): Promise<any> => {
+export const loadUserPreferences = async (userId: string): Promise<UserPreferences> => {
   const prefsRef = doc(db, 'users', userId, 'preferences', 'main');
   const docSnap = await getDoc(prefsRef);
-  return docSnap.exists() ? docSnap.data() : {};
+  return docSnap.exists() ? (docSnap.data() as UserPreferences) : {};
 };
 
 function deepFlattenArray(arr: unknown[]): unknown[] {

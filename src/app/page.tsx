@@ -50,6 +50,11 @@ export default function Home() {
   const [answerStyle, setAnswerStyle] = useState("");
   const [customPersonality, setCustomPersonality] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
+  // Add state to hold the last saved personalization settings
+  const [savedUserName, setSavedUserName] = useState("");
+  const [savedUserInterests, setSavedUserInterests] = useState("");
+  const [savedAnswerStyle, setSavedAnswerStyle] = useState("");
+  const [savedCustomPersonality, setSavedCustomPersonality] = useState("");
 
   // Handle authentication state
   useEffect(() => {
@@ -167,6 +172,29 @@ export default function Home() {
     }
   }
 
+  function handleSaveSettings() {
+    setSettingsSaved(true);
+    setSavedUserName(userName);
+    setSavedUserInterests(userInterests);
+    setSavedAnswerStyle(answerStyle);
+    setSavedCustomPersonality(customPersonality);
+    setTimeout(() => setSettingsSaved(false), 1500);
+  }
+
+  function buildSystemPrompt() {
+    let prompt = "You are an AI assistant.";
+    if (savedUserName) prompt += ` The user's name is ${savedUserName}. Greet them by name when possible.`;
+    if (savedUserInterests) prompt += ` The user is interested in: ${savedUserInterests}. You can reference these topics in your answers.`;
+    if (savedAnswerStyle) {
+      if (savedAnswerStyle === 'friendly') prompt += " Respond in a friendly, conversational tone.";
+      if (savedAnswerStyle === 'formal') prompt += " Respond in a formal, professional tone.";
+      if (savedAnswerStyle === 'concise') prompt += " Respond concisely, using as few words as possible.";
+      if (savedAnswerStyle === 'detailed') prompt += " Respond with detailed, thorough explanations.";
+    }
+    if (savedCustomPersonality) prompt += ` ${savedCustomPersonality}`;
+    return prompt;
+  }
+
   async function sendMessage() {
     if (!input.trim() && !image) return;
     if (!user) return;
@@ -260,6 +288,7 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [
+              { role: 'system', content: buildSystemPrompt() },
               ...newMessages.map((m) => ({ role: m.role, content: m.content })),
             ],
           }),
@@ -488,11 +517,6 @@ export default function Home() {
         <div className="text-white text-lg">Loading...</div>
       </div>
     );
-  }
-
-  function handleSaveSettings() {
-    setSettingsSaved(true);
-    setTimeout(() => setSettingsSaved(false), 1500);
   }
 
   return (

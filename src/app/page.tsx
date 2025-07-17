@@ -340,44 +340,21 @@ export default function Home() {
     }
   }
 
-  function AnimatedChatBubble({ children, isUser }: { children: React.ReactNode, isUser?: boolean }) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className={`relative px-6 py-4 rounded-2xl shadow-xl mb-2 glass ${
-          isUser
-            ? "bg-gradient-to-br from-blue-700 to-blue-500 text-white self-end"
-            : "bg-gradient-to-br from-gray-800/80 to-gray-700/80 text-white self-start backdrop-blur-md"
-        }`}
-        style={{
-          boxShadow: isUser
-            ? "0 4px 32px 0 rgba(59,130,246,0.15)"
-            : "0 4px 32px 0 rgba(0,0,0,0.15)",
-        }}
-      >
-        {children}
-      </motion.div>
-    );
-  }
-
   function renderMessage(msg: Message, i: number) {
     // Only show image preview for the current image before upload/analysis
     if (i === messages.length && imagePreviewUrl) {
       return (
-        <div key={i} className="flex justify-end mb-4">
-          <div className="max-w-xs">
+        <div key={i} className="message-row user">
+          <div className="chat-bubble">
             <Image src={imagePreviewUrl} alt="preview" width={320} height={240} className="rounded-lg shadow-sm" />
           </div>
         </div>
       );
     }
     if (msg.imageUrl) {
-      console.log("Rendering image with URL:", msg.imageUrl);
       return (
-        <div key={i} className="flex justify-end mb-4">
-          <div className="max-w-xs">
+        <div key={i} className="message-row user">
+          <div className="chat-bubble">
             <Image src={msg.imageUrl} alt="uploaded" width={320} height={240} className="rounded-lg shadow-sm" />
           </div>
         </div>
@@ -457,19 +434,23 @@ export default function Home() {
     }
     if (msg.fileUrl) {
       return (
-        <AnimatedChatBubble key={i} isUser={msg.role === "user"}>
-          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="file-link">
-            {msg.fileName || 'Download file'}
-          </a>
-        </AnimatedChatBubble>
+        <div key={i} className={`message-row ${msg.role === "user" ? "user" : "assistant"}`}>
+          <div className="chat-bubble">
+            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="file-link">
+              {msg.fileName || 'Download file'}
+            </a>
+          </div>
+        </div>
       );
     }
     return (
-      <AnimatedChatBubble key={i} isUser={msg.role === "user"}>
-        <div className="prose prose-sm max-w-none prose-invert">
-          <ReactMarkdown>{msg.content}</ReactMarkdown>
+      <div key={i} className={`message-row ${msg.role === "user" ? "user" : "assistant"}`}>
+        <div className="chat-bubble">
+          <div className="prose prose-sm max-w-none prose-invert">
+            <ReactMarkdown>{msg.content}</ReactMarkdown>
+          </div>
         </div>
-      </AnimatedChatBubble>
+      </div>
     );
   }
 
@@ -595,7 +576,9 @@ export default function Home() {
                 <p className="text-lg">Ready when you are.</p>
               </div>
             )}
-            {messages.map((msg, i) => renderMessage(msg, i))}
+            <div className="chat-area">
+              {messages.map((msg, i) => renderMessage(msg, i))}
+            </div>
             {loading && (
               <div className="flex justify-start mb-4">
                 <div className="bg-gray-800 rounded-2xl shadow-sm border border-gray-700 px-4 py-3">

@@ -41,42 +41,67 @@ body {
   min-height: 60vh;
 }
 
-.message-row {
+/* --- Chat Area Improvements --- */
+.chat-area {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 32px 0 24px 0;
+  min-height: 70vh;
   display: flex;
-  margin-bottom: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--chat-bg);
 }
 
+/* --- Message Row Alignment --- */
+.message-row {
+  display: flex;
+  margin-bottom: 18px;
+}
 .message-row.user {
   justify-content: flex-end;
 }
-
 .message-row.assistant {
   justify-content: flex-start;
 }
 
+/* --- Chat Bubble --- */
 .chat-bubble {
   border-radius: var(--radius);
-  padding: 16px 20px;
+  padding: 16px 22px;
   max-width: 60%;
   font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  transition: background 0.2s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+  border: 1px solid rgba(60,70,120,0.18);
   word-break: break-word;
+  transition: none;
 }
-
 .message-row.user .chat-bubble {
-  background: var(--bubble-user);
+  background: linear-gradient(135deg, #2563eb 60%, #1e40af 100%);
   color: #fff;
   align-self: flex-end;
-  margin-left: 20%;
+  margin-left: 18%;
+  border: 1px solid #2563eb33;
 }
-
 .message-row.assistant .chat-bubble {
-  background: var(--bubble-ai);
+  background: linear-gradient(135deg, #23232a 80%, #18181c 100%);
   color: var(--text-main);
   align-self: flex-start;
-  margin-right: 20%;
+  margin-right: 18%;
+  border: 1px solid #23232a55;
 }
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  .chat-area { max-width: 98vw; }
+  .chat-bubble { max-width: 85vw; }
+  .message-row.user .chat-bubble, .message-row.assistant .chat-bubble {
+    margin-left: 0; margin-right: 0;
+  }
+}
+
+/* Remove old animation and glass styles if present */
+.glass { background: none !important; box-shadow: none !important; }
 
 .input-bar {
   background: var(--input-bg);

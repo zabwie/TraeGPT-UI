@@ -12,20 +12,17 @@
   --shadow: 0 2px 8px rgba(0,0,0,0.2);
   --radius: 12px;
 }
-
 body {
   background: var(--bg-main);
   color: var(--text-main);
-  font-family: 'Inter', 'Sora', 'Geist', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   margin: 0;
   height: 100vh;
 }
-
 .app-container {
   display: flex;
   height: 100vh;
 }
-
 .sidebar {
   background: var(--bg-sidebar);
   width: 260px;
@@ -35,14 +32,12 @@ body {
   border-right: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
-
 .sidebar .logo {
   font-size: 2rem;
   font-weight: bold;
   color: var(--accent-blue);
   margin: 0 0 32px 32px;
 }
-
 .sidebar .new-chat-btn {
   background: var(--accent-blue);
   color: #fff;
@@ -57,13 +52,11 @@ body {
 .sidebar .new-chat-btn:hover {
   background: #2563eb;
 }
-
 .sidebar .chat-history {
   flex: 1;
   margin: 0 32px;
   color: var(--text-secondary);
 }
-
 .main-chat {
   flex: 1;
   display: flex;
@@ -71,14 +64,12 @@ body {
   background: var(--bg-main);
   position: relative;
 }
-
 .chat-header {
   padding: 24px 0 0 0;
   text-align: center;
   font-size: 1.2rem;
   color: var(--text-secondary);
 }
-
 .chat-messages {
   flex: 1;
   padding: 32px 0;
@@ -87,18 +78,15 @@ body {
   align-items: center;
   overflow-y: auto;
 }
-
 .message-row {
   width: 100%;
   display: flex;
   justify-content: flex-start;
   margin-bottom: 16px;
 }
-
 .message-row.user {
   justify-content: flex-end;
 }
-
 .chat-bubble {
   background: var(--bg-chat-bubble);
   color: var(--text-main);
@@ -109,12 +97,10 @@ body {
   font-size: 1rem;
   position: relative;
 }
-
 .message-row.user .chat-bubble {
   background: var(--bg-chat-bubble-user);
   color: #fff;
 }
-
 .avatar {
   width: 36px;
   height: 36px;
@@ -127,17 +113,14 @@ body {
   font-size: 1.5rem;
   margin-right: 12px;
 }
-
 .message-row.user .avatar {
   display: none;
 }
-
 .suggestions {
   display: flex;
   gap: 12px;
   margin: 16px 0;
 }
-
 .suggestion-btn {
   background: var(--bg-sidebar);
   color: var(--text-secondary);
@@ -152,7 +135,6 @@ body {
   background: var(--accent-blue);
   color: #fff;
 }
-
 .input-bar {
   display: flex;
   align-items: center;
@@ -164,7 +146,6 @@ body {
   width: 90%;
   box-shadow: var(--shadow);
 }
-
 .input-bar input,
 .input-bar textarea {
   flex: 1;
@@ -175,7 +156,6 @@ body {
   padding: 12px;
   outline: none;
 }
-
 .input-bar button {
   background: var(--accent-blue);
   color: #fff;

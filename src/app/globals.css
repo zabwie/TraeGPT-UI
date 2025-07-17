@@ -4,8 +4,8 @@
   --sidebar-bg: #101014;
   --sidebar-border: #23232a;
   --chat-bg: #18181c;
-  --bubble-user: #23232a;
-  --bubble-assistant: #23232a;
+  --bubble-user: #1a56db;
+  --bubble-ai: #23232a;
   --input-bg: #18181c;
   --input-border: #23232a;
   --text-main: #e4e6eb;
@@ -33,28 +33,49 @@ body {
   color: var(--text-main);
 }
 
+.chat-messages {
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 60vh;
+}
+
+.message-row {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.message-row.user {
+  justify-content: flex-end;
+}
+
+.message-row.assistant {
+  justify-content: flex-start;
+}
+
 .chat-bubble {
   border-radius: var(--radius);
   padding: 16px 20px;
-  margin-bottom: 12px;
   max-width: 60%;
   font-size: 1rem;
-  background: var(--bubble-assistant);
-  color: var(--text-main);
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   transition: background 0.2s;
+  word-break: break-word;
 }
 
 .message-row.user .chat-bubble {
   background: var(--bubble-user);
-  color: var(--text-main);
+  color: #fff;
   align-self: flex-end;
+  margin-left: 20%;
 }
 
 .message-row.assistant .chat-bubble {
-  background: var(--bubble-assistant);
+  background: var(--bubble-ai);
   color: var(--text-main);
   align-self: flex-start;
+  margin-right: 20%;
 }
 
 .input-bar {

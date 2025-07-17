@@ -8,6 +8,22 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
+function Typewriter({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    setDisplayed("");
+    if (!text) return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(interval);
+    }, 14);
+    return () => clearInterval(interval);
+  }, [text]);
+  return <span>{displayed}</span>;
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -340,7 +356,7 @@ export default function Home() {
     }
   }
 
-  function renderMessage(msg: Message, i: number) {
+  function renderMessage(msg: Message, i: number, isLatestAssistant: boolean) {
     // Only show image preview for the current image before upload/analysis
     if (i === messages.length && imagePreviewUrl) {
       return (
@@ -443,11 +459,17 @@ export default function Home() {
         </div>
       );
     }
+    // Typewriter only for latest assistant message
+    const isAssistant = msg.role === "assistant";
     return (
       <div key={i} className={`message-row ${msg.role === "user" ? "user" : "assistant"}`}>
         <div className="chat-bubble">
           <div className="prose prose-sm max-w-none prose-invert">
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
+            {isAssistant && isLatestAssistant ? (
+              <Typewriter text={msg.content} />
+            ) : (
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            )}
           </div>
         </div>
       </div>
@@ -576,7 +598,7 @@ export default function Home() {
                 <p className="text-lg">Ready when you are.</p>
               </div>
             )}
-            {messages.map((msg, i) => renderMessage(msg, i))}
+            {messages.map((msg, i) => renderMessage(msg, i, i === messages.length - 1 && msg.role === "assistant"))}
             {loading && (
               <div className="flex justify-start mb-4">
                 <div className="bg-gray-800 rounded-2xl shadow-sm border border-gray-700 px-4 py-3">

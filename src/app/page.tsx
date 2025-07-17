@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import Image from "next/image";
 import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, saveTrainingData, Message, ChatSession, uploadImageAndGetUrl } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -26,6 +27,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [fileType, setFileType] = useState<'images' | 'attachments' | 'documents'>('images');
 
   // Handle authentication state
   useEffect(() => {
@@ -306,11 +308,58 @@ export default function Home() {
     }
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setShowPlusMenu(false);
+    if (fileType === 'images') {
+      setImage(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+    } else {
+      // Upload file to Firebase Storage and add as message
+      uploadImageAndGetUrl(file, user?.uid || 'unknown').then((url) => {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            role: 'user',
+            content: fileType === 'documents' ? '[Document uploaded]' : '[Attachment uploaded]',
+            fileUrl: url,
+            fileName: file.name,
+            fileType: file.type,
+          },
+        ]);
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
+  }
+
+  function AnimatedChatBubble({ children, isUser }: { children: React.ReactNode, isUser?: boolean }) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className={`relative px-6 py-4 rounded-2xl shadow-xl mb-2 glass ${
+          isUser
+            ? "bg-gradient-to-br from-blue-700 to-blue-500 text-white self-end"
+            : "bg-gradient-to-br from-gray-800/80 to-gray-700/80 text-white self-start backdrop-blur-md"
+        }`}
+        style={{
+          boxShadow: isUser
+            ? "0 4px 32px 0 rgba(59,130,246,0.15)"
+            : "0 4px 32px 0 rgba(0,0,0,0.15)",
+        }}
+      >
+        {children}
+      </motion.div>
+    );
   }
 
   function renderMessage(msg: Message, i: number) {
@@ -406,20 +455,21 @@ export default function Home() {
         </div>
       );
     }
+    if (msg.fileUrl) {
+      return (
+        <AnimatedChatBubble key={i} isUser={msg.role === "user"}>
+          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="file-link">
+            {msg.fileName || 'Download file'}
+          </a>
+        </AnimatedChatBubble>
+      );
+    }
     return (
-      <div key={i} className={`flex mb-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-        <div
-          className={`max-w-3xl rounded-2xl shadow-sm px-4 py-3 ${
-            msg.role === "user"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-800 text-gray-100 border border-gray-700"
-          }`}
-        >
-          <div className="prose prose-sm max-w-none prose-invert">
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
-          </div>
+      <AnimatedChatBubble key={i} isUser={msg.role === "user"}>
+        <div className="prose prose-sm max-w-none prose-invert">
+          <ReactMarkdown>{msg.content}</ReactMarkdown>
         </div>
-      </div>
+      </AnimatedChatBubble>
     );
   }
 
@@ -611,34 +661,66 @@ export default function Home() {
                   </button>
                   
                   {showPlusMenu && (
-                    <div className="absolute bottom-full left-0 mb-2 bg-gray-700 rounded-lg shadow-lg border border-gray-600 p-2 min-w-48">
-                      <div className="space-y-1">
-                        <button 
-                          onClick={() => {
-                            fileInputRef.current?.click();
-                            setShowPlusMenu(false);
-                          }}
-                          className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          Images
-                        </button>
-                        <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          Attachments
-                        </button>
-                        <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Documents
-                        </button>
-                      </div>
-                    </div>
+                    <AnimatePresence>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="absolute bottom-full left-0 mb-2 bg-gray-800/90 backdrop-blur-lg rounded-xl shadow-2xl border border-gray-700 p-2 min-w-48 z-50"
+                      >
+                        <div className="space-y-1">
+                          <button 
+                            onClick={() => {
+                              setFileType('images');
+                              if (fileInputRef.current) {
+                                fileInputRef.current.accept = 'image/*';
+                                fileInputRef.current.click();
+                              }
+                              setShowPlusMenu(false);
+                            }}
+                            className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Images
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setFileType('attachments');
+                              if (fileInputRef.current) {
+                                fileInputRef.current.accept = '';
+                                fileInputRef.current.click();
+                              }
+                              setShowPlusMenu(false);
+                            }}
+                            className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            Attachments
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setFileType('documents');
+                              if (fileInputRef.current) {
+                                fileInputRef.current.accept = '.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                                fileInputRef.current.click();
+                              }
+                              setShowPlusMenu(false);
+                            }}
+                            className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded flex items-center gap-2 text-sm"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Documents
+                          </button>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
                   )}
                 </div>
                 
@@ -693,9 +775,8 @@ export default function Home() {
       {/* Hidden file input */}
       <input
         type="file"
-        accept="image/*"
         ref={fileInputRef}
-        onChange={handleImage}
+        onChange={handleFileChange}
         className="hidden"
       />
     </div>

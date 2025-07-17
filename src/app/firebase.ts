@@ -23,6 +23,9 @@ export interface Message {
     }>;
     analysis_time?: number;
   };
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
 }
 
 export interface ChatSession {

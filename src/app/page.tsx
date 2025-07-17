@@ -44,6 +44,11 @@ export default function Home() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [fileType, setFileType] = useState<'images' | 'attachments' | 'documents'>('images');
+  // Add new state for personalization
+  const [userName, setUserName] = useState("");
+  const [userInterests, setUserInterests] = useState("");
+  const [answerStyle, setAnswerStyle] = useState("");
+  const [customPersonality, setCustomPersonality] = useState("");
 
   // Handle authentication state
   useEffect(() => {
@@ -612,6 +617,58 @@ export default function Home() {
               {showTools && (
                 <div style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }} className="mb-4 p-4 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Your Name</label>
+                      <input
+                        type="text"
+                        value={userName}
+                        onChange={e => setUserName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
+                        placeholder="e.g. Zabi"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Your Interests</label>
+                      <input
+                        type="text"
+                        value={userInterests}
+                        onChange={e => setUserInterests(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
+                        placeholder="e.g. coding, music, AI"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Preferred Answer Style</label>
+                      <select
+                        value={answerStyle}
+                        onChange={e => setAnswerStyle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
+                        disabled={loading}
+                      >
+                        <option value="">No preference</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="formal">Formal</option>
+                        <option value="concise">Concise</option>
+                        <option value="detailed">Detailed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Custom AI Personality Prompt</label>
+                      <textarea
+                        value={customPersonality}
+                        onChange={e => setCustomPersonality(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)', minHeight: '60px' }}
+                        placeholder="e.g. Always answer like a pirate!"
+                        disabled={loading}
+                      />
+                    </div>
+                    {/* Existing OCR and CLIP fields below */}
                     <div>
                       <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>OCR Languages</label>
                       <input

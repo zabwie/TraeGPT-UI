@@ -576,9 +576,7 @@ export default function Home() {
                 <p className="text-lg">Ready when you are.</p>
               </div>
             )}
-            <div className="chat-area">
-              {messages.map((msg, i) => renderMessage(msg, i))}
-            </div>
+            {messages.map((msg, i) => renderMessage(msg, i))}
             {loading && (
               <div className="flex justify-start mb-4">
                 <div className="bg-gray-800 rounded-2xl shadow-sm border border-gray-700 px-4 py-3">

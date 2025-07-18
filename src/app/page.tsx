@@ -310,45 +310,30 @@ export default function Home() {
     
     if (input.trim()) {
       try {
-        const TOGETHER_API_URL = process.env.NEXT_PUBLIC_TOGETHER_API_URL || "https://api.together.xyz/v1/chat/completions";
-        const TOGETHER_API_KEY = process.env.NEXT_PUBLIC_TOGETHER_API_KEY;
-        if (!TOGETHER_API_KEY) {
-          setError('TogetherAI API key is missing. Please check your .env and restart the app.');
-          setLoading(false);
-          return;
-        }
-        const res = await fetch(TOGETHER_API_URL, {
+        const res = await fetch("/api/togetherai", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${TOGETHER_API_KEY}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "moonshotai/Kimi-K2-Instruct",
             messages: [
               { role: 'system', content: buildSystemPrompt() },
               ...newMessages.map((m) => ({ role: m.role, content: m.content })),
             ],
           }),
         });
-        
         if (!res.ok) {
           throw new Error(`Chat failed: ${res.status} ${res.statusText}`);
         }
-        
         const data = await res.json();
         const assistantMessage: Message = { 
           role: "assistant" as const, 
           content: data.choices?.[0]?.message?.content || "[No response]" 
         };
         setMessages((msgs) => [...msgs, assistantMessage]);
-        
         // Save assistant message for training
         await saveTrainingData(user.uid, {
           role: "assistant",
           content: assistantMessage.content
         });
-        
         // Create or update chat session
         const updatedMessages: Message[] = [...newMessages, assistantMessage];
         if (!currentSessionId) {
@@ -362,7 +347,6 @@ export default function Home() {
           };
           setChatSessions(prev => [newSession, ...prev]);
           setCurrentSessionId(newSession.id);
-          
           // Save to Firebase
           await saveChatSession(user.uid, newSession);
         } else {
@@ -373,17 +357,15 @@ export default function Home() {
             title: generateSessionTitle(updatedMessages),
             updatedAt: new Date() 
           };
-          
           setChatSessions(prev => prev.map(session => 
             session.id === currentSessionId ? updatedSession : session
           ));
-          
           // Save to Firebase
           await saveChatSession(user.uid, updatedSession);
         }
       } catch (e) {
         console.error('Chat error:', e);
-        setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please check your TogetherAI API key and endpoint.`);
+        setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
       }
     }
     setLoading(false);

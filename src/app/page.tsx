@@ -312,6 +312,13 @@ export default function Home() {
       try {
         const TOGETHER_API_URL = process.env.NEXT_PUBLIC_TOGETHER_API_URL || "https://api.together.xyz/v1/chat/completions";
         const TOGETHER_API_KEY = process.env.NEXT_PUBLIC_TOGETHER_API_KEY;
+        console.log('TogetherAI URL:', TOGETHER_API_URL);
+        console.log('TogetherAI KEY:', TOGETHER_API_KEY ? 'set' : 'NOT SET');
+        if (!TOGETHER_API_KEY) {
+          setError('TogetherAI API key is missing. Please check your .env and restart the app.');
+          setLoading(false);
+          return;
+        }
         const res = await fetch(TOGETHER_API_URL, {
           method: "POST",
           headers: {

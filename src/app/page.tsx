@@ -6,7 +6,15 @@ import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession 
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+interface HFClassifyResult {
+  label: string;
+  score?: number;
+}
+interface HFDetectResult {
+  label: string;
+  score?: number;
+  box?: unknown;
+}
 
 function Typewriter({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState("");
@@ -284,10 +292,10 @@ export default function Home() {
           // Compose a summary string for the AI
           let summary = "Image analysis:";
           if (classify && Array.isArray(classify) && classify.length > 0) {
-            summary += ` Classification: ${classify.map((c: any) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
+            summary += ` Classification: ${classify.map((c: HFClassifyResult) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
           }
           if (detect && Array.isArray(detect) && detect.length > 0) {
-            summary += ` Objects detected: ${detect.map((o: any) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
+            summary += ` Objects detected: ${detect.map((o: HFDetectResult) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
           }
           if (caption && Array.isArray(caption) && caption[0]?.generated_text) {
             summary += ` Caption: ${caption[0].generated_text}`;

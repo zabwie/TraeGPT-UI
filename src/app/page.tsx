@@ -253,14 +253,23 @@ export default function Home() {
   }
 
   async function sendMessage() {
-    if (!input.trim() && !image) return;
-    if (!user) return;
+    console.log('[sendMessage] Function called');
+    if (!input.trim() && !image) {
+      console.log('[sendMessage] No input or image, returning early');
+      return;
+    }
+    if (!user) {
+      console.log('[sendMessage] No user, returning early');
+      return;
+    }
     
+    console.log('[sendMessage] Starting message processing...');
     setLoading(true);
     setError(null);
     
     let newMessages = [...messages];
     if (input.trim()) {
+      console.log('[sendMessage] Processing text input:', input.substring(0, 50) + '...');
       const userMessage = { role: "user" as const, content: input };
       newMessages.push(userMessage);
       setMessages(newMessages);
@@ -274,6 +283,7 @@ export default function Home() {
     }
     
     if (image) {
+      console.log('[sendMessage] Processing image...');
       try {
         // 1. Upload image to Firebase Storage and get persistent URL
         const imageUrl = await uploadImageAndGetUrl(image, user.uid);
@@ -339,6 +349,7 @@ export default function Home() {
     }
     
     if (input.trim()) {
+      console.log('[sendMessage] Sending to TogetherAI...');
       try {
         console.log('[Chat] Sending message to TogetherAI...');
         const start = Date.now();
@@ -410,6 +421,7 @@ export default function Home() {
         }
       }
     }
+    console.log('[sendMessage] Function ending, setting loading to false');
     setLoading(false);
   }
 
@@ -923,7 +935,10 @@ export default function Home() {
                   </button>
                   
                   <button
-                    onClick={sendMessage}
+                    onClick={() => {
+                      console.log('[Send Button] Clicked');
+                      sendMessage();
+                    }}
                     disabled={loading || (!input.trim() && !image)}
                     className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Send message"

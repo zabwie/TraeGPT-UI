@@ -122,10 +122,17 @@ export default function Home() {
     }
   }, [user]);
 
-  React.useEffect(() => {
-    // Scroll to bottom on new message
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+  // Replace the scroll-to-bottom effect with a smart scroll that only scrolls if the user is near the bottom
+  useEffect(() => {
+    if (!chatContainerRef.current) return;
+    const container = chatContainerRef.current;
+    const threshold = 120;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    if (isNearBottom) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
     }
   }, [messages, loading]);
 
@@ -543,7 +550,19 @@ export default function Home() {
     <div className="min-h-screen flex" style={{ background: 'var(--chat-bg)' }}>
       {/* Left Sidebar - Fixed */}
       {sidebarOpen && (
-        <div className="w-64 sidebar" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)', color: 'var(--text-main)' }}>
+        <div
+          className="w-64 sidebar"
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            height: '100vh',
+            background: 'var(--sidebar-bg)',
+            borderRight: '1px solid var(--sidebar-border)',
+            color: 'var(--text-main)',
+            zIndex: 10
+          }}
+        >
           <div className="p-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
@@ -667,6 +686,7 @@ export default function Home() {
               </div>
             )}
           </div>
+        </div>
 
           {/* Input Area - Fixed to Bottom */}
           <div style={{ background: 'var(--chat-bg)', borderTop: '1px solid var(--sidebar-border)' }} className="border-t border-gray-700 bg-gray-900 p-6 sticky bottom-0">
@@ -887,7 +907,10 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              
+                        {/* After the input bar's closing div, add the disclaimer below it */}
+                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.95rem', margin: '8px 0 0 0', opacity: 0.8 }}>
+                    Note: For some reason it's a bit sensetive so if you send a message immediately after the AI, it will show an error. To prevent this, please wait 3-5 seconds.
+                </div>
               {imagePreviewUrl && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -900,7 +923,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </div>
       
       {/* Hidden file input */}
       <input

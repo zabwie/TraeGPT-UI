@@ -108,7 +108,7 @@ body {
   .chat-bubble { max-width: 95vw; }
   .message-row.user .chat-bubble, .message-row.assistant .chat-bubble {
     margin-left: 0; margin-right: 0;
-  }
+}
 }
 
 /* Remove old glass and gradients */

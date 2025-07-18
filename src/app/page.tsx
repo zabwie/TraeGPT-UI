@@ -254,175 +254,189 @@ export default function Home() {
 
   async function sendMessage() {
     console.log('[sendMessage] Function called');
-    if (!input.trim() && !image) {
-      console.log('[sendMessage] No input or image, returning early');
-      return;
-    }
-    if (!user) {
-      console.log('[sendMessage] No user, returning early');
-      return;
-    }
-    
-    console.log('[sendMessage] Starting message processing...');
-    setLoading(true);
-    setError(null);
-    
-    let newMessages = [...messages];
-    if (input.trim()) {
-      console.log('[sendMessage] Processing text input:', input.substring(0, 50) + '...');
-      const userMessage = { role: "user" as const, content: input };
-      newMessages.push(userMessage);
-      setMessages(newMessages);
-      setInput("");
-      
-      // Save user message for training
-      await saveTrainingData(user.uid, {
-        role: "user",
-        content: input
-      });
-    }
-    
-    if (image) {
-      console.log('[sendMessage] Processing image...');
-      try {
-        // 1. Upload image to Firebase Storage and get persistent URL
-        const imageUrl = await uploadImageAndGetUrl(image, user.uid);
-        // 2. Add the message with the persistent imageUrl
-        newMessages = [
-          ...newMessages,
-          {
-            role: "user",
-            content: "[Image uploaded]",
-            imageUrl,
-          },
-        ];
-        setMessages(newMessages);
-        // 3. Send image to Next.js endpoints for analysis (classification, detection, captioning)
-        const form = new FormData();
-        form.append("file", image);
-        try {
-          // Call all three endpoints in parallel with timeout
-          const [classifyRes, detectRes, captionRes] = await Promise.all([
-            fetchWithTimeout("/api/image/classify", { method: "POST", body: form }),
-            fetchWithTimeout("/api/image/detect", { method: "POST", body: form }),
-            fetchWithTimeout("/api/image/caption", { method: "POST", body: form }),
-          ]);
-          if (!classifyRes.ok && !detectRes.ok && !captionRes.ok) {
-            throw new Error("Image analysis failed: All endpoints failed");
-          }
-          const [classify, detect, caption] = await Promise.all([
-            classifyRes.ok ? classifyRes.json() : null,
-            detectRes.ok ? detectRes.json() : null,
-            captionRes.ok ? captionRes.json() : null,
-          ]);
-          // Compose a summary string for the AI
-          let summary = "Image analysis:";
-          if (classify && Array.isArray(classify) && classify.length > 0) {
-            summary += ` Classification: ${classify.map((c: HFClassifyResult) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
-          }
-          if (detect && Array.isArray(detect) && detect.length > 0) {
-            summary += ` Objects detected: ${detect.map((o: HFDetectResult) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
-          }
-          if (caption && Array.isArray(caption) && caption[0]?.generated_text) {
-            summary += ` Caption: ${caption[0].generated_text}`;
-          }
-          setMessages((msgs) => [
-            ...msgs,
-            {
-              role: "assistant",
-              content: summary,
-              imageResult: { classification: classify, object_detection: detect, caption: caption?.[0]?.generated_text },
-            },
-          ]);
-        } catch (e) {
-          setError("Image analysis failed or timed out. Please try again.");
-        }
-        setImage(null);
-        setImagePreviewUrl(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      } catch (e) {
-        console.error('Image upload error:', e);
-        setError(`Image upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-        setLoading(false);
+    try {
+      if (!input.trim() && !image) {
+        console.log('[sendMessage] No input or image, returning early');
         return;
       }
-    }
-    
-    if (input.trim()) {
-      console.log('[sendMessage] Sending to TogetherAI...');
-      try {
-        console.log('[Chat] Sending message to TogetherAI...');
-        const start = Date.now();
-        const res = await fetchWithTimeout("/api/togetherai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: buildSystemPrompt() },
-              ...newMessages.map((m) => ({ role: m.role, content: m.content })),
-            ],
-          }),
-        }, 15000); // 15 seconds timeout
-        const elapsed = Date.now() - start;
-        console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
-        if (!res.ok) {
-          console.error(`[Chat] TogetherAI error: ${res.status} ${res.statusText}`);
-          throw new Error(`Chat failed: ${res.status} ${res.statusText}`);
-        }
-        const data = await res.json();
-        console.log('[Chat] TogetherAI response data:', data);
-        const assistantMessage: Message = { 
-          role: "assistant" as const, 
-          content: data.choices?.[0]?.message?.content || "[No response]" 
-        };
-        setMessages((msgs) => [...msgs, assistantMessage]);
-        // Save assistant message for training
+      if (!user) {
+        console.log('[sendMessage] No user, returning early');
+        return;
+      }
+      
+      console.log('[sendMessage] Starting message processing...');
+      setLoading(true);
+      setError(null);
+      
+      let newMessages = [...messages];
+      console.log('[sendMessage] Input trim result:', input.trim());
+      if (input.trim()) {
+        console.log('[sendMessage] Processing text input:', input.substring(0, 50) + '...');
+        const userMessage = { role: "user" as const, content: input };
+        console.log('[sendMessage] Created user message:', userMessage);
+        newMessages.push(userMessage);
+        setMessages(newMessages);
+        setInput("");
+        
+        // Save user message for training
+        console.log('[sendMessage] Saving training data...');
         await saveTrainingData(user.uid, {
-          role: "assistant",
-          content: assistantMessage.content
+          role: "user",
+          content: input
         });
-        // Create or update chat session
-        const updatedMessages: Message[] = [...newMessages, assistantMessage];
-        if (!currentSessionId) {
-          // Create new session
-          const newSession: ChatSession = {
-            id: Date.now().toString(),
-            title: generateSessionTitle(updatedMessages),
-            messages: updatedMessages,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-          setChatSessions(prev => [newSession, ...prev]);
-          setCurrentSessionId(newSession.id);
-          // Save to Firebase
-          await saveChatSession(user.uid, newSession);
-        } else {
-          // Update existing session
-          const updatedSession = {
-            ...chatSessions.find(s => s.id === currentSessionId)!,
-            messages: updatedMessages, 
-            title: generateSessionTitle(updatedMessages),
-            updatedAt: new Date() 
-          };
-          setChatSessions(prev => prev.map(session => 
-            session.id === currentSessionId ? updatedSession : session
-          ));
-          // Save to Firebase
-          await saveChatSession(user.uid, updatedSession);
-        }
-        console.log('[Chat] Message handling complete.');
-      } catch (e) {
-        if (e instanceof Error && e.message === 'Request timed out') {
-          console.error('[Chat] TogetherAI request timed out.');
-          setError("AI response timed out. Please try again.");
-        } else {
-          console.error('[Chat] Error:', e);
-          setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
+        console.log('[sendMessage] Training data saved');
+      }
+      
+      if (image) {
+        console.log('[sendMessage] Processing image...');
+        try {
+          // 1. Upload image to Firebase Storage and get persistent URL
+          const imageUrl = await uploadImageAndGetUrl(image, user.uid);
+          // 2. Add the message with the persistent imageUrl
+          newMessages = [
+            ...newMessages,
+            {
+              role: "user",
+              content: "[Image uploaded]",
+              imageUrl,
+            },
+          ];
+          setMessages(newMessages);
+          // 3. Send image to Next.js endpoints for analysis (classification, detection, captioning)
+          const form = new FormData();
+          form.append("file", image);
+          try {
+            // Call all three endpoints in parallel with timeout
+            const [classifyRes, detectRes, captionRes] = await Promise.all([
+              fetchWithTimeout("/api/image/classify", { method: "POST", body: form }),
+              fetchWithTimeout("/api/image/detect", { method: "POST", body: form }),
+              fetchWithTimeout("/api/image/caption", { method: "POST", body: form }),
+            ]);
+            if (!classifyRes.ok && !detectRes.ok && !captionRes.ok) {
+              throw new Error("Image analysis failed: All endpoints failed");
+            }
+            const [classify, detect, caption] = await Promise.all([
+              classifyRes.ok ? classifyRes.json() : null,
+              detectRes.ok ? detectRes.json() : null,
+              captionRes.ok ? captionRes.json() : null,
+            ]);
+            // Compose a summary string for the AI
+            let summary = "Image analysis:";
+            if (classify && Array.isArray(classify) && classify.length > 0) {
+              summary += ` Classification: ${classify.map((c: HFClassifyResult) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
+            }
+            if (detect && Array.isArray(detect) && detect.length > 0) {
+              summary += ` Objects detected: ${detect.map((o: HFDetectResult) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
+            }
+            if (caption && Array.isArray(caption) && caption[0]?.generated_text) {
+              summary += ` Caption: ${caption[0].generated_text}`;
+            }
+            setMessages((msgs) => [
+              ...msgs,
+              {
+                role: "assistant",
+                content: summary,
+                imageResult: { classification: classify, object_detection: detect, caption: caption?.[0]?.generated_text },
+              },
+            ]);
+          } catch (e) {
+            setError("Image analysis failed or timed out. Please try again.");
+          }
+          setImage(null);
+          setImagePreviewUrl(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        } catch (e) {
+          console.error('Image upload error:', e);
+          setError(`Image upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          setLoading(false);
+          return;
         }
       }
+      
+      console.log('[sendMessage] About to check input.trim() again:', input.trim());
+      console.log('[sendMessage] Current input value:', input);
+      if (input.trim()) {
+        console.log('[sendMessage] Sending to TogetherAI...');
+        try {
+          console.log('[Chat] Sending message to TogetherAI...');
+          const start = Date.now();
+          const res = await fetchWithTimeout("/api/togetherai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: [
+                { role: 'system', content: buildSystemPrompt() },
+                ...newMessages.map((m) => ({ role: m.role, content: m.content })),
+              ],
+            }),
+          }, 15000); // 15 seconds timeout
+          const elapsed = Date.now() - start;
+          console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
+          if (!res.ok) {
+            console.error(`[Chat] TogetherAI error: ${res.status} ${res.statusText}`);
+            throw new Error(`Chat failed: ${res.status} ${res.statusText}`);
+          }
+          const data = await res.json();
+          console.log('[Chat] TogetherAI response data:', data);
+          const assistantMessage: Message = { 
+            role: "assistant" as const, 
+            content: data.choices?.[0]?.message?.content || "[No response]" 
+          };
+          setMessages((msgs) => [...msgs, assistantMessage]);
+          // Save assistant message for training
+          await saveTrainingData(user.uid, {
+            role: "assistant",
+            content: assistantMessage.content
+          });
+          // Create or update chat session
+          const updatedMessages: Message[] = [...newMessages, assistantMessage];
+          if (!currentSessionId) {
+            // Create new session
+            const newSession: ChatSession = {
+              id: Date.now().toString(),
+              title: generateSessionTitle(updatedMessages),
+              messages: updatedMessages,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            setChatSessions(prev => [newSession, ...prev]);
+            setCurrentSessionId(newSession.id);
+            // Save to Firebase
+            await saveChatSession(user.uid, newSession);
+          } else {
+            // Update existing session
+            const updatedSession = {
+              ...chatSessions.find(s => s.id === currentSessionId)!,
+              messages: updatedMessages, 
+              title: generateSessionTitle(updatedMessages),
+              updatedAt: new Date() 
+            };
+            setChatSessions(prev => prev.map(session => 
+              session.id === currentSessionId ? updatedSession : session
+            ));
+            // Save to Firebase
+            await saveChatSession(user.uid, updatedSession);
+          }
+          console.log('[Chat] Message handling complete.');
+        } catch (e) {
+          if (e instanceof Error && e.message === 'Request timed out') {
+            console.error('[Chat] TogetherAI request timed out.');
+            setError("AI response timed out. Please try again.");
+          } else {
+            console.error('[Chat] Error:', e);
+            setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
+          }
+        }
+      } else {
+        console.log('[sendMessage] Input is empty after processing, not sending to TogetherAI');
+      }
+      console.log('[sendMessage] Function ending, setting loading to false');
+      setLoading(false);
+    } catch (error) {
+      console.error('[sendMessage] Unexpected error:', error);
+      setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLoading(false);
     }
-    console.log('[sendMessage] Function ending, setting loading to false');
-    setLoading(false);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {

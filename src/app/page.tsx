@@ -32,6 +32,22 @@ function Typewriter({ text }: { text: string }) {
   return <span>{displayed}</span>;
 }
 
+// Add a helper function for timeout
+function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}, timeout = 15000): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Request timed out')), timeout);
+    fetch(resource, options)
+      .then((response) => {
+        clearTimeout(timer);
+        resolve(response);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -275,11 +291,11 @@ export default function Home() {
         const form = new FormData();
         form.append("file", image);
         try {
-          // Call all three endpoints in parallel
+          // Call all three endpoints in parallel with timeout
           const [classifyRes, detectRes, captionRes] = await Promise.all([
-            fetch("/api/image/classify", { method: "POST", body: form }),
-            fetch("/api/image/detect", { method: "POST", body: form }),
-            fetch("/api/image/caption", { method: "POST", body: form }),
+            fetchWithTimeout("/api/image/classify", { method: "POST", body: form }),
+            fetchWithTimeout("/api/image/detect", { method: "POST", body: form }),
+            fetchWithTimeout("/api/image/caption", { method: "POST", body: form }),
           ]);
           if (!classifyRes.ok && !detectRes.ok && !captionRes.ok) {
             throw new Error("Image analysis failed: All endpoints failed");
@@ -309,7 +325,7 @@ export default function Home() {
             },
           ]);
         } catch (e) {
-          setError("Image analysis failed.");
+          setError("Image analysis failed or timed out. Please try again.");
         }
         setImage(null);
         setImagePreviewUrl(null);

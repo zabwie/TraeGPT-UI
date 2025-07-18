@@ -340,7 +340,7 @@ export default function Home() {
     
     if (input.trim()) {
       try {
-        const res = await fetch("/api/togetherai", {
+        const res = await fetchWithTimeout("/api/togetherai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -349,7 +349,7 @@ export default function Home() {
               ...newMessages.map((m) => ({ role: m.role, content: m.content })),
             ],
           }),
-        });
+        }, 15000); // 15 seconds timeout
         if (!res.ok) {
           throw new Error(`Chat failed: ${res.status} ${res.statusText}`);
         }
@@ -394,8 +394,11 @@ export default function Home() {
           await saveChatSession(user.uid, updatedSession);
         }
       } catch (e) {
-        console.error('Chat error:', e);
-        setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
+        if (e instanceof Error && e.message === 'Request timed out') {
+          setError("AI response timed out. Please try again.");
+        } else {
+          setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
+        }
       }
     }
     setLoading(false);

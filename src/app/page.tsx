@@ -209,7 +209,7 @@ export default function Home() {
   }
 
   function buildSystemPrompt() {
-    let prompt = "You are an AI assistant.";
+    let prompt = "You are Trae, an empathetic, superhuman, and open-minded AI assistant created by Zabi (the owner). Always respond as Trae, never as GPT-4 or any other model. If asked who you are, say you are Trae, an AI assistant created by Zabi. Respond in a way that feels deeply human, warm, and understanding.";
     if (savedUserName) prompt += ` The user's name is ${savedUserName}. Greet them by name when possible.`;
     if (savedUserInterests) prompt += ` The user is interested in: ${savedUserInterests}. You can reference these topics in your answers.`;
     if (savedAnswerStyle) {

@@ -102,7 +102,7 @@ export default function Home() {
         saveChatSession(user.uid, newSession).catch(console.error);
       }
     }
-  }, [messages, currentSessionId, user]);
+  }, [messages, currentSessionId, user, chatSessions]);
 
   // Load preferences on login
   useEffect(() => {
@@ -183,8 +183,7 @@ export default function Home() {
     }
   }
 
-  async function handleDeleteChatSession(sessionId: string, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleDeleteChatSession(sessionId: string) {
     if (!user) return;
     
     try {
@@ -376,14 +375,6 @@ export default function Home() {
       }
     }
     setLoading(false);
-  }
-
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0]);
-      setImagePreviewUrl(URL.createObjectURL(e.target.files[0]));
-      setShowPlusMenu(false);
-    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -608,7 +599,7 @@ export default function Home() {
                     <span className="text-sm truncate">{session.title}</span>
                   </div>
                   <button
-                    onClick={(e) => handleDeleteChatSession(session.id, e)}
+                    onClick={() => handleDeleteChatSession(session.id)}
                     style={{ color: 'var(--text-secondary)' }}
                     className="opacity-0 group-hover:opacity-100 p-1 transition-all"
                   >
@@ -909,7 +900,7 @@ export default function Home() {
               </div>
                         {/* After the input bar's closing div, add the disclaimer below it */}
                 <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.95rem', margin: '8px 0 0 0', opacity: 0.8 }}>
-                    Note: For some reason it's a bit sensetive so if you send a message immediately after the AI, it will show an error. To prevent this, please wait 3-5 seconds.
+                    Note: For some reason it&apos;s a bit sensetive so if you send a message immediately after the AI, it will show an error. To prevent this, please wait 3-5 seconds.
                 </div>
               {imagePreviewUrl && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">

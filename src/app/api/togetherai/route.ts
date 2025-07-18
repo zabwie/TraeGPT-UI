@@ -1,16 +1,13 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest) {
   const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
   const TOGETHER_API_URL = process.env.TOGETHER_API_URL || 'https://api.together.xyz/v1/chat/completions';
   if (!TOGETHER_API_KEY) {
-    return res.status(500).json({ error: 'TogetherAI API key not set on server.' });
+    return NextResponse.json({ error: 'TogetherAI API key not set on server.' }, { status: 500 });
   }
   try {
-    const { messages } = req.body;
+    const { messages } = await req.json();
     const togetherRes = await fetch(TOGETHER_API_URL, {
       method: 'POST',
       headers: {
@@ -23,8 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     });
     const data = await togetherRes.json();
-    return res.status(togetherRes.status).json(data);
+    return NextResponse.json(data, { status: togetherRes.status });
   } catch (err) {
-    return res.status(500).json({ error: 'TogetherAI proxy error', detail: String(err) });
+    return NextResponse.json({ error: 'TogetherAI proxy error', detail: String(err) }, { status: 500 });
   }
 } 

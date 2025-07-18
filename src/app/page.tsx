@@ -263,41 +263,41 @@ export default function Home() {
           },
         ];
         setMessages(newMessages);
-        // 3. Send image to backend for analysis
+        // 3. Send image to Next.js endpoints for analysis (classification, detection, captioning)
         const form = new FormData();
         form.append("file", image);
-        form.append("languages", ocrLang);
-        if (categories) form.append("categories", categories);
-        form.append("analysis_type", "full");
         try {
-          const res = await fetch(`${API_BASE}/v1/image/analyze`, {
-            method: "POST",
-            body: form,
-          });
-          if (!res.ok) {
-            throw new Error(`Image analysis failed: ${res.status} ${res.statusText}`);
+          // Call all three endpoints in parallel
+          const [classifyRes, detectRes, captionRes] = await Promise.all([
+            fetch("/api/image/classify", { method: "POST", body: form }),
+            fetch("/api/image/detect", { method: "POST", body: form }),
+            fetch("/api/image/caption", { method: "POST", body: form }),
+          ]);
+          if (!classifyRes.ok && !detectRes.ok && !captionRes.ok) {
+            throw new Error("Image analysis failed: All endpoints failed");
           }
-          const result = await res.json();
+          const [classify, detect, caption] = await Promise.all([
+            classifyRes.ok ? classifyRes.json() : null,
+            detectRes.ok ? detectRes.json() : null,
+            captionRes.ok ? captionRes.json() : null,
+          ]);
           // Compose a summary string for the AI
           let summary = "Image analysis:";
-          if (result.classification && result.classification.length > 0) {
-            summary += ` Classification: ${result.classification.map((c: { class: string; confidence: number }) => c.class).join(", ")}.`;
+          if (classify && Array.isArray(classify) && classify.length > 0) {
+            summary += ` Classification: ${classify.map((c: any) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
           }
-          if (result.object_detection && result.object_detection.length > 0) {
-            summary += ` Objects detected: ${result.object_detection.map((o: { class: string; confidence: number }) => o.class).join(", ")}.`;
+          if (detect && Array.isArray(detect) && detect.length > 0) {
+            summary += ` Objects detected: ${detect.map((o: any) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
           }
-          if (result.caption) {
-            summary += ` Caption: ${result.caption}`;
-          }
-          if (result.text_extraction && result.text_extraction.length > 0) {
-            summary += ` Text found: ${result.text_extraction.map((t: { text: string; confidence: number }) => t.text).join(", ")}.`;
+          if (caption && Array.isArray(caption) && caption[0]?.generated_text) {
+            summary += ` Caption: ${caption[0].generated_text}`;
           }
           setMessages((msgs) => [
             ...msgs,
             {
               role: "assistant",
               content: summary,
-              imageResult: result,
+              imageResult: { classification: classify, object_detection: detect, caption: caption?.[0]?.generated_text },
             },
           ]);
         } catch (e) {

@@ -284,11 +284,18 @@ export default function Home() {
         // Save user message for training
         console.log('[sendMessage] Saving training data...');
         try {
-          await saveTrainingData(user.uid, {
-            role: "user",
-            content: inputContent
-          });
-          console.log('[sendMessage] Training data saved');
+          // TEMPORARILY DISABLED - Add a timeout to prevent hanging
+          // const trainingPromise = saveTrainingData(user.uid, {
+          //   role: "user",
+          //   content: inputContent
+          // });
+          
+          // const timeoutPromise = new Promise((_, reject) => {
+          //   setTimeout(() => reject(new Error('Training data save timeout')), 5000);
+          // });
+          
+          // await Promise.race([trainingPromise, timeoutPromise]);
+          console.log('[sendMessage] Training data saved (disabled for testing)');
         } catch (error) {
           console.error('[sendMessage] Error saving training data:', error);
           // Continue anyway, don't let this stop the chat
@@ -394,10 +401,12 @@ export default function Home() {
           setMessages((msgs) => [...msgs, assistantMessage]);
           // Save assistant message for training
           try {
-            await saveTrainingData(user.uid, {
-              role: "assistant",
-              content: assistantMessage.content
-            });
+            // TEMPORARILY DISABLED
+            // await saveTrainingData(user.uid, {
+            //   role: "assistant",
+            //   content: assistantMessage.content
+            // });
+            console.log('[sendMessage] Assistant training data saved (disabled for testing)');
           } catch (error) {
             console.error('[sendMessage] Error saving assistant training data:', error);
           }

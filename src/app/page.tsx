@@ -310,10 +310,16 @@ export default function Home() {
     
     if (input.trim()) {
       try {
-        const res = await fetch(`${API_BASE}/v1/chat/completions`, {
+        const TOGETHER_API_URL = process.env.NEXT_PUBLIC_TOGETHER_API_URL || "https://api.together.xyz/v1/chat/completions";
+        const TOGETHER_API_KEY = process.env.NEXT_PUBLIC_TOGETHER_API_KEY;
+        const res = await fetch(TOGETHER_API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${TOGETHER_API_KEY}`,
+          },
           body: JSON.stringify({
+            model: "moonshotai/kimi-k2-instruct",
             messages: [
               { role: 'system', content: buildSystemPrompt() },
               ...newMessages.map((m) => ({ role: m.role, content: m.content })),
@@ -372,7 +378,7 @@ export default function Home() {
         }
       } catch (e) {
         console.error('Chat error:', e);
-        setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please check if your backend is running at ${API_BASE}`);
+        setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please check your TogetherAI API key and endpoint.`);
       }
     }
     setLoading(false);
@@ -634,6 +640,14 @@ export default function Home() {
               </svg>
               <span className="text-sm">Tools</span>
             </button>
+            {!user && (
+              <button
+                onClick={signInUser}
+                style={{ background: 'var(--button-bg)', color: 'var(--text-main)', border: 'none', borderRadius: 'var(--radius)', padding: '8px 18px', fontWeight: 500, fontSize: '1rem', cursor: 'pointer', transition: 'background 0.2s' }}
+              >
+                Sign up / Log in
+              </button>
+            )}
           </div>
         </div>
 

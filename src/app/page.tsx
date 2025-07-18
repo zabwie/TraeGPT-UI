@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import Image from "next/image";
-import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, saveTrainingData, Message, ChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
+import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, Message, ChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -52,6 +52,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [responseTime, setResponseTime] = useState<number | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [ocrLang, setOcrLang] = useState("en");
@@ -81,6 +82,8 @@ export default function Home() {
   const [savedCustomPersonality, setSavedCustomPersonality] = useState("");
   // Add loading state for preferences
   const [prefsLoading, setPrefsLoading] = useState(false);
+  // Add debounce ref for Firebase saves
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle authentication state
   useEffect(() => {
@@ -105,7 +108,7 @@ export default function Home() {
     }
   }, [authLoading, user]);
 
-  // Update current session when messages change
+  // Update current session when messages change - with debounced save
   useEffect(() => {
     if (currentSessionId && messages.length > 0 && user) {
       const updatedSession = chatSessions.find(s => s.id === currentSessionId);
@@ -117,15 +120,33 @@ export default function Home() {
           updatedAt: new Date() 
         };
         
-        // Update local state
+        // Update local state immediately
         setChatSessions(prev => prev.map(session => 
           session.id === currentSessionId ? newSession : session
         ));
         
-        // Save to Firebase
-        saveChatSession(user.uid, newSession).catch(console.error);
+        // Debounce Firebase save to prevent overwhelming the database
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        
+        saveTimeoutRef.current = setTimeout(async () => {
+          try {
+            await saveChatSession(user.uid, newSession);
+          } catch (error) {
+            console.error('[Firebase] Error saving chat session:', error);
+            // Don't show error to user for background saves
+          }
+        }, 2000); // Wait 2 seconds before saving to Firebase
       }
     }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [messages, currentSessionId, user, chatSessions]);
 
   // Load preferences on login
@@ -229,26 +250,37 @@ export default function Home() {
     setSavedUserInterests(userInterests);
     setSavedAnswerStyle(answerStyle);
     setSavedCustomPersonality(customPersonality);
-    await saveUserPreferences(user.uid, {
-      userName,
-      userInterests,
-      answerStyle,
-      customPersonality
-    });
-    setTimeout(() => setSettingsSaved(false), 1500);
+    try {
+      await saveUserPreferences(user.uid, {
+        userName,
+        userInterests,
+        answerStyle,
+        customPersonality
+      });
+      setTimeout(() => setSettingsSaved(false), 1500);
+    } catch (error) {
+      console.error('[Firebase] Error saving preferences:', error);
+      setError("Failed to save preferences. Please try again.");
+      setTimeout(() => setSettingsSaved(false), 1500);
+    }
   }
 
   function buildSystemPrompt() {
-    let prompt = "You are Trae, an empathetic, superhuman, and open-minded AI assistant created by Zabi (the owner). Always respond as Trae, never as GPT-4 or any other model. If asked who you are, say you are Trae, an AI assistant created by Zabi. Respond in a way that feels deeply human, warm, and understanding.";
-    if (savedUserName) prompt += ` The user's name is ${savedUserName}. Greet them by name when possible.`;
-    if (savedUserInterests) prompt += ` The user is interested in: ${savedUserInterests}. You can reference these topics in your answers.`;
+    let prompt = "You are Trae, an empathetic AI assistant created by Zabi. Respond as Trae, never as other models.";
+    
+    if (savedUserName) prompt += ` User's name: ${savedUserName}.`;
+    if (savedUserInterests) prompt += ` Interests: ${savedUserInterests}.`;
     if (savedAnswerStyle) {
-      if (savedAnswerStyle === 'friendly') prompt += " Respond in a friendly, conversational tone.";
-      if (savedAnswerStyle === 'formal') prompt += " Respond in a formal, professional tone.";
-      if (savedAnswerStyle === 'concise') prompt += " Respond concisely, using as few words as possible.";
-      if (savedAnswerStyle === 'detailed') prompt += " Respond with detailed, thorough explanations.";
+      const styleMap = {
+        'friendly': 'Be conversational and warm.',
+        'formal': 'Be professional and formal.',
+        'concise': 'Be brief and to the point.',
+        'detailed': 'Provide thorough explanations.'
+      };
+      prompt += ` ${styleMap[savedAnswerStyle as keyof typeof styleMap] || ''}`;
     }
     if (savedCustomPersonality) prompt += ` ${savedCustomPersonality}`;
+    
     return prompt;
   }
 
@@ -281,25 +313,8 @@ export default function Home() {
         const inputContent = input;
         setInput("");
         
-        // Save user message for training
-        console.log('[sendMessage] Saving training data...');
-        try {
-          // TEMPORARILY DISABLED - Add a timeout to prevent hanging
-          // const trainingPromise = saveTrainingData(user.uid, {
-          //   role: "user",
-          //   content: inputContent
-          // });
-          
-          // const timeoutPromise = new Promise((_, reject) => {
-          //   setTimeout(() => reject(new Error('Training data save timeout')), 5000);
-          // });
-          
-          // await Promise.race([trainingPromise, timeoutPromise]);
-          console.log('[sendMessage] Training data saved (disabled for testing)');
-        } catch (error) {
-          console.error('[sendMessage] Error saving training data:', error);
-          // Continue anyway, don't let this stop the chat
-        }
+        // Training data saving removed - Kimi is already well-trained
+        console.log('[sendMessage] Message processed, proceeding to AI...');
       }
       
       if (image) {
@@ -387,6 +402,7 @@ export default function Home() {
             }),
           }, 15000); // 15 seconds timeout
           const elapsed = Date.now() - start;
+          setResponseTime(elapsed);
           console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
           if (!res.ok) {
             console.error(`[Chat] TogetherAI error: ${res.status} ${res.statusText}`);
@@ -399,18 +415,8 @@ export default function Home() {
             content: data.choices?.[0]?.message?.content || "[No response]" 
           };
           setMessages((msgs) => [...msgs, assistantMessage]);
-          // Save assistant message for training
-          try {
-            // TEMPORARILY DISABLED
-            // await saveTrainingData(user.uid, {
-            //   role: "assistant",
-            //   content: assistantMessage.content
-            // });
-            console.log('[sendMessage] Assistant training data saved (disabled for testing)');
-          } catch (error) {
-            console.error('[sendMessage] Error saving assistant training data:', error);
-          }
-          // Create or update chat session
+          
+          // Create or update chat session - with debounced save
           const updatedMessages: Message[] = [...newMessages, assistantMessage];
           if (!currentSessionId) {
             // Create new session
@@ -423,14 +429,15 @@ export default function Home() {
             };
             setChatSessions(prev => [newSession, ...prev]);
             setCurrentSessionId(newSession.id);
-            // Save to Firebase
+            // Save to Firebase with error handling
             try {
               await saveChatSession(user.uid, newSession);
             } catch (error) {
-              console.error('[sendMessage] Error saving chat session:', error);
+              console.error('[sendMessage] Error saving new chat session:', error);
+              // Don't show error to user for background saves
             }
           } else {
-            // Update existing session
+            // Update existing session - let the useEffect handle the save
             const updatedSession = {
               ...chatSessions.find(s => s.id === currentSessionId)!,
               messages: updatedMessages, 
@@ -440,12 +447,7 @@ export default function Home() {
             setChatSessions(prev => prev.map(session => 
               session.id === currentSessionId ? updatedSession : session
             ));
-            // Save to Firebase
-            try {
-              await saveChatSession(user.uid, updatedSession);
-            } catch (error) {
-              console.error('[sendMessage] Error updating chat session:', error);
-            }
+            // The useEffect will handle the debounced save
           }
           console.log('[Chat] Message handling complete.');
         } catch (e) {
@@ -462,6 +464,8 @@ export default function Home() {
       }
       console.log('[sendMessage] Function ending, setting loading to false');
       setLoading(false);
+      // Clear response time after a few seconds
+      setTimeout(() => setResponseTime(null), 5000);
     } catch (error) {
       console.error('[sendMessage] Unexpected error:', error);
       setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -763,7 +767,10 @@ export default function Home() {
                       <div style={{ background: 'var(--text-secondary)', animationDelay: '0.1s' }} className="w-2 h-2 rounded-full animate-bounce"></div>
                       <div style={{ background: 'var(--text-secondary)', animationDelay: '0.2s' }} className="w-2 h-2 rounded-full animate-bounce"></div>
                     </div>
-                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>AI is thinking...</span>
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      AI is thinking...
+                      {responseTime && <span style={{ color: 'var(--text-success)' }}> ({responseTime}ms)</span>}
+                    </span>
                   </div>
                 </div>
               </div>

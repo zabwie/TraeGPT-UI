@@ -340,6 +340,8 @@ export default function Home() {
     
     if (input.trim()) {
       try {
+        console.log('[Chat] Sending message to TogetherAI...');
+        const start = Date.now();
         const res = await fetchWithTimeout("/api/togetherai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -350,10 +352,14 @@ export default function Home() {
             ],
           }),
         }, 15000); // 15 seconds timeout
+        const elapsed = Date.now() - start;
+        console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
         if (!res.ok) {
+          console.error(`[Chat] TogetherAI error: ${res.status} ${res.statusText}`);
           throw new Error(`Chat failed: ${res.status} ${res.statusText}`);
         }
         const data = await res.json();
+        console.log('[Chat] TogetherAI response data:', data);
         const assistantMessage: Message = { 
           role: "assistant" as const, 
           content: data.choices?.[0]?.message?.content || "[No response]" 
@@ -393,10 +399,13 @@ export default function Home() {
           // Save to Firebase
           await saveChatSession(user.uid, updatedSession);
         }
+        console.log('[Chat] Message handling complete.');
       } catch (e) {
         if (e instanceof Error && e.message === 'Request timed out') {
+          console.error('[Chat] TogetherAI request timed out.');
           setError("AI response timed out. Please try again.");
         } else {
+          console.error('[Chat] Error:', e);
           setError(`Chat failed: ${e instanceof Error ? e.message : 'Unknown error'}.`);
         }
       }

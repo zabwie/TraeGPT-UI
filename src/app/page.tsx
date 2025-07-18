@@ -319,7 +319,7 @@ export default function Home() {
             "Authorization": `Bearer ${TOGETHER_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "moonshotai/kimi-k2-instruct",
+            model: "moonshotai/Kimi-K2-Instruct",
             messages: [
               { role: 'system', content: buildSystemPrompt() },
               ...newMessages.map((m) => ({ role: m.role, content: m.content })),

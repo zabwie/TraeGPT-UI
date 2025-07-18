@@ -276,15 +276,23 @@ export default function Home() {
         console.log('[sendMessage] Created user message:', userMessage);
         newMessages.push(userMessage);
         setMessages(newMessages);
+        
+        // Store the input content before clearing it
+        const inputContent = input;
         setInput("");
         
         // Save user message for training
         console.log('[sendMessage] Saving training data...');
-        await saveTrainingData(user.uid, {
-          role: "user",
-          content: input
-        });
-        console.log('[sendMessage] Training data saved');
+        try {
+          await saveTrainingData(user.uid, {
+            role: "user",
+            content: inputContent
+          });
+          console.log('[sendMessage] Training data saved');
+        } catch (error) {
+          console.error('[sendMessage] Error saving training data:', error);
+          // Continue anyway, don't let this stop the chat
+        }
       }
       
       if (image) {
@@ -353,9 +361,10 @@ export default function Home() {
         }
       }
       
-      console.log('[sendMessage] About to check input.trim() again:', input.trim());
-      console.log('[sendMessage] Current input value:', input);
-      if (input.trim()) {
+      // Use the stored input content instead of the cleared input
+      const inputToSend = input.trim() || (input.trim() ? input : '');
+      console.log('[sendMessage] About to check input for TogetherAI:', inputToSend);
+      if (inputToSend) {
         console.log('[sendMessage] Sending to TogetherAI...');
         try {
           console.log('[Chat] Sending message to TogetherAI...');
@@ -384,10 +393,14 @@ export default function Home() {
           };
           setMessages((msgs) => [...msgs, assistantMessage]);
           // Save assistant message for training
-          await saveTrainingData(user.uid, {
-            role: "assistant",
-            content: assistantMessage.content
-          });
+          try {
+            await saveTrainingData(user.uid, {
+              role: "assistant",
+              content: assistantMessage.content
+            });
+          } catch (error) {
+            console.error('[sendMessage] Error saving assistant training data:', error);
+          }
           // Create or update chat session
           const updatedMessages: Message[] = [...newMessages, assistantMessage];
           if (!currentSessionId) {
@@ -402,7 +415,11 @@ export default function Home() {
             setChatSessions(prev => [newSession, ...prev]);
             setCurrentSessionId(newSession.id);
             // Save to Firebase
-            await saveChatSession(user.uid, newSession);
+            try {
+              await saveChatSession(user.uid, newSession);
+            } catch (error) {
+              console.error('[sendMessage] Error saving chat session:', error);
+            }
           } else {
             // Update existing session
             const updatedSession = {
@@ -415,7 +432,11 @@ export default function Home() {
               session.id === currentSessionId ? updatedSession : session
             ));
             // Save to Firebase
-            await saveChatSession(user.uid, updatedSession);
+            try {
+              await saveChatSession(user.uid, updatedSession);
+            } catch (error) {
+              console.error('[sendMessage] Error updating chat session:', error);
+            }
           }
           console.log('[Chat] Message handling complete.');
         } catch (e) {

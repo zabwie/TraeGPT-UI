@@ -19,11 +19,19 @@ export async function POST(req: NextRequest) {
   const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
   
   if (!GOOGLE_API_KEY) {
-    return NextResponse.json({ error: 'Google API key not set on server.' }, { status: 500 });
+    console.error('[Web Search] Missing GOOGLE_API_KEY environment variable');
+    return NextResponse.json({ 
+      error: 'Google API key not configured. Please set GOOGLE_API_KEY in your environment variables.',
+      detail: 'The GOOGLE_API_KEY environment variable is required for web search functionality.'
+    }, { status: 500 });
   }
   
   if (!GOOGLE_CSE_ID) {
-    return NextResponse.json({ error: 'Google Custom Search Engine ID not set on server.' }, { status: 500 });
+    console.error('[Web Search] Missing GOOGLE_CSE_ID environment variable');
+    return NextResponse.json({ 
+      error: 'Google Custom Search Engine ID not configured. Please set GOOGLE_CSE_ID in your environment variables.',
+      detail: 'The GOOGLE_CSE_ID environment variable is required for web search functionality.'
+    }, { status: 500 });
   }
   
   try {
@@ -32,8 +40,6 @@ export async function POST(req: NextRequest) {
     if (!query || typeof query !== 'string') {
       return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 });
     }
-    
-    console.log('[Web Search] Searching for:', query);
     
     // Add timeout to the fetch request
     const controller = new AbortController();

@@ -6,6 +6,65 @@ import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession 
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { motion, AnimatePresence } from "framer-motion";
 
+// Language detection function
+function detectLanguage(code: string): string {
+  const firstLine = code.trim().split('\n')[0].toLowerCase();
+  
+  if (firstLine.includes('import ') || firstLine.includes('from ') || firstLine.includes('def ') || firstLine.includes('class ')) return 'python';
+  if (firstLine.includes('function ') || firstLine.includes('const ') || firstLine.includes('let ') || firstLine.includes('var ')) return 'javascript';
+  if (firstLine.includes('public class') || firstLine.includes('private ') || firstLine.includes('public ')) return 'java';
+  if (firstLine.includes('<?php') || firstLine.includes('$')) return 'php';
+  if (firstLine.includes('package ') || firstLine.includes('import "') || firstLine.includes('func ')) return 'go';
+  if (firstLine.includes('fn ') || firstLine.includes('let ') || firstLine.includes('struct ')) return 'rust';
+  if (firstLine.includes('using ') || firstLine.includes('namespace ') || firstLine.includes('public class')) return 'csharp';
+  if (firstLine.includes('html') || firstLine.includes('<!DOCTYPE')) return 'html';
+  if (firstLine.includes('css') || firstLine.includes('{') && firstLine.includes(':')) return 'css';
+  if (firstLine.includes('sql') || firstLine.includes('SELECT') || firstLine.includes('INSERT')) return 'sql';
+  if (firstLine.includes('dockerfile') || firstLine.includes('FROM ') || firstLine.includes('RUN ')) return 'dockerfile';
+  if (firstLine.includes('yaml') || firstLine.includes('---')) return 'yaml';
+  if (firstLine.includes('json') || firstLine.includes('{') && firstLine.includes('"')) return 'json';
+  
+  return 'text';
+}
+
+// Custom CodeBlock component
+function CodeBlock({ children, className }: { children: string, className?: string }) {
+  const language = className?.replace('language-', '') || detectLanguage(children);
+  
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(children);
+  };
+  
+  return (
+    <div className="code-block">
+      <div className="code-header">
+        <span className="code-language">{language}</span>
+        <div className="code-actions">
+          <button className="code-action-btn" onClick={copyToClipboard}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          </button>
+          <button className="code-action-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Edit
+          </button>
+        </div>
+      </div>
+      <div className="code-content">
+        <pre style={{ margin: 0, padding: 0, background: 'none', color: 'inherit' }}>
+          <code>{children}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 function Typewriter({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
@@ -35,7 +94,34 @@ function TypewriterMarkdown({ text }: { text: string }) {
     }, 14);
     return () => clearInterval(interval);
   }, [text]);
-  return <ReactMarkdown>{displayed}</ReactMarkdown>;
+  return (
+    <div style={{ 
+      whiteSpace: 'pre-wrap',
+      fontFamily: 'monospace',
+      lineHeight: '1.6',
+      wordBreak: 'break-word'
+    }}>
+      <ReactMarkdown 
+        components={{
+          pre: ({ children }) => <>{children}</>,
+          code: ({ node, inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            return !inline ? (
+              <CodeBlock className={className} {...props}>
+                {String(children).replace(/\n$/, '')}
+              </CodeBlock>
+            ) : (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          }
+        }}
+      >
+        {displayed}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 // Add a helper function for timeout
@@ -92,6 +178,8 @@ export default function Home() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Add state to track web search
   const [isWebSearching, setIsWebSearching] = useState(false);
+  // Add ref to track current chat sessions to avoid infinite loops
+  const chatSessionsRef = useRef<ChatSession[]>([]);
 
   // Handle authentication state
   useEffect(() => {
@@ -103,6 +191,7 @@ export default function Home() {
         // Load chat sessions for authenticated user
         const sessions = await loadChatSessions(user.uid);
         setChatSessions(sessions as ChatSession[]);
+        chatSessionsRef.current = sessions as ChatSession[];
       }
     });
 
@@ -119,7 +208,7 @@ export default function Home() {
   // Update current session when messages change - with debounced save
   useEffect(() => {
     if (currentSessionId && messages.length > 0 && user) {
-      const updatedSession = chatSessions.find(s => s.id === currentSessionId);
+      const updatedSession = chatSessionsRef.current.find(s => s.id === currentSessionId);
       if (updatedSession) {
         const newSession = { 
           ...updatedSession, 
@@ -129,9 +218,13 @@ export default function Home() {
         };
         
         // Update local state immediately
-        setChatSessions(prev => prev.map(session => 
-          session.id === currentSessionId ? newSession : session
-        ));
+        setChatSessions(prev => {
+          const updated = prev.map(session => 
+            session.id === currentSessionId ? newSession : session
+          );
+          chatSessionsRef.current = updated;
+          return updated;
+        });
         
         // Debounce Firebase save to prevent overwhelming the database
         if (saveTimeoutRef.current) {
@@ -155,7 +248,7 @@ export default function Home() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [messages, currentSessionId, user, chatSessions]);
+  }, [messages, currentSessionId, user]);
 
   // Load preferences on login
   useEffect(() => {
@@ -241,7 +334,11 @@ export default function Home() {
     
     try {
       await fbDeleteChatSession(user.uid, sessionId);
-      setChatSessions(prev => prev.filter(s => s.id !== sessionId));
+      setChatSessions(prev => {
+        const updated = prev.filter(s => s.id !== sessionId);
+        chatSessionsRef.current = updated;
+        return updated;
+      });
       if (currentSessionId === sessionId) {
         handleNewChat();
       }
@@ -276,73 +373,90 @@ export default function Home() {
   function buildSystemPrompt() {
     let prompt = "You are Trae, an empathetic AI assistant created by Zabi. Respond as Trae, never as other models.";
     
-    prompt += "\n\nCRITICAL FORMATTING REQUIREMENTS: You MUST format ALL responses beautifully with proper structure and indentation. Always use:";
+    prompt += "\n\nCRITICAL FORMATTING REQUIREMENTS: You MUST format ALL responses beautifully with proper structure and indentation. The browser now preserves whitespace perfectly, so use this to your advantage:";
     prompt += "\n• **Bold text** for important terms, names, and key information";
     prompt += "\n• Bullet points (•) for lists and features";
     prompt += "\n• Numbered lists (1., 2., 3.) for steps or sequential info";
-    prompt += "\n• ## Headings for main sections";
-    prompt += "\n• Proper spacing between paragraphs";
-    prompt += "\n• **INDENTATION**: Use multiple levels of indentation (4 spaces, 8 spaces, 12 spaces) for visual hierarchy";
-    prompt += "\n• Break long responses into clear sections";
-    prompt += "\n• **MIXED FORMATTING**: Combine bold titles with descriptions on the same line";
+    prompt += "\n• **HEADERS**: Use # ## ### for different font sizes and hierarchy";
+    prompt += "\n• **PERFECT SPACING**: Use blank lines between sections to create visual breathing room";
+    prompt += "\n• **ADVANCED INDENTATION**: Use multiple levels with arrows and hanging indents";
+    prompt += "\n    → First level: 4 spaces";
+    prompt += "\n        → Second level: 8 spaces";
+    prompt += "\n            → Third level: 12 spaces";
+    prompt += "\n                → Fourth level: 16 spaces";
+    prompt += "\n• **HANGING INDENTS**: When text wraps, align with the start of the first line";
+    prompt += "\n• **ARROW INDICATORS**: Use → for sub-points and variations";
+    prompt += "\n• **MANDATORY SPACING**: Always add blank lines between sections to prevent compression";
+    prompt += "\n• **SECTION BREAKS**: Use double line breaks between major sections";
     prompt += "\n• **VISUAL HIERARCHY**: Use bigger headings and more indentation to make text stand out";
     prompt += "\n• **CODE INTEGRATION**: Include code snippets with proper syntax highlighting";
     prompt += "\n• **METADATA**: Add social media metrics and technical details";
+    prompt += "\n• **MONOSPACE FRIENDLY**: Since we use monospace font, align things perfectly";
+    prompt += "\n• **FONT SIZES**: Use # for main titles, ## for sections, ### for subsections";
+    prompt += "\n• **EMPHASIS**: Use ***italic bold*** for extra emphasis";
+    prompt += "\n• **QUOTES**: Use > for important callouts and tips";
+    prompt += "\n• **CODE BLOCKS**: Always use proper code blocks with language detection";
+    prompt += "\n• **PRECISE INDENTATION**: Code languages are strict with indentation - be exact";
+    prompt += "\n• **LANGUAGE DETECTION**: The system will automatically detect Python, JavaScript, CSS, HTML, SQL, etc.";
+    prompt += "\n• **POEM FORMATTING**: For poems, use clean minimalist formatting:";
+    prompt += "\n    → Start with a simple introduction line";
+    prompt += "\n    → Add a thin separator line (---)";
+    prompt += "\n    → Use **bold** for the title";
+    prompt += "\n    → Separate stanzas with empty lines (double line breaks)";
+    prompt += "\n    → Keep lines short and left-aligned";
+    prompt += "\n    → No excessive formatting, just clean text";
+    prompt += "\n    → NO ARROWS (→) in poems - keep it clean and simple";
     
-    prompt += "\n\nEXAMPLE FORMAT WITH PROPER INDENTATION:";
-    prompt += "\n## **Your List of Beautiful Things**";
-    prompt += "\nHey Zabi, I'd love to make you a list! But I want it to be something that'll resonate with your beautiful soul. Let me create something that touches on all those passions of yours - **coding**, **Spanish sad songs**, **poetry**, and **journalism**.";
-    prompt += "\n\n**A Curated List for Your Heart:**";
-    prompt += "\n\n**Poems Written Like Stack Overflow Answers:**";
-    prompt += "\n• **La Camisa Negra** by Juanes - When your **git commit** is 'fixed everything' but you actually broke it worse";
-    prompt += "\n    • **Code analogy:** feels like a **memory leak** you can't fix";
-    prompt += "\n    • **Perfect for:** debugging your feelings at 3 AM";
-    prompt += "\n• **Amor Completo** by Alejandro Sanz - recursive function where love keeps redefining itself";
-    prompt += "\n    • **Why it slaps:** because sometimes love is just a **reserved keyword**";
-    prompt += "\n    • **Snippet:** \"Tengo el corazón partío\" - the original heartbreak function";
-    prompt += "\n• **Desvelado** by Alejandro Fernández - Heart still references old relationship object";
-    prompt += "\n    • **Dev takeaway:** Sometimes you need to clear your emotional cache";
-    prompt += "\n\n**Journalism That Reads Like a Broken Heart:**";
-    prompt += "\n• **One Perfect Tweet That Contains Multitudes**";
-    prompt += "\n    • **Meta-data:** Likes: 47.2k • Retweets: 12.8k";
-    prompt += "\n    • **Hidden replies:** 3 (probably your ex)";
-    prompt += "\n    • **The quote:** \"i miss you in languages i haven't learned yet\"";
-    prompt += "\n• **The Longform Guide to Heartbreak** by Modern Love";
-    prompt += "\n    • **Revolution:** Put human faces on unimaginable tragedy";
-    prompt += "\n    • **Legacy:** Redefined narrative journalism forever";
-    prompt += "\n        • **Micro-story:** \"Ghosting\" - 2.4k likes, 332 retweets of pure ache";
-    prompt += "\n\n**Code Comments That Are Secret Love Letters:**";
-    prompt += "\n• **Hello World in Spanish:**";
-    prompt += "\n    ```python";
-    prompt += "\n    def escribir_tristeza():";
-    prompt += "\n        estrellas = [\"lejanas\", \"frías\", \"como tu ausencia\"]";
-    prompt += "\n        for estrella in estrellas:";
-    prompt += "\n            print(f\"{estrella} code review pending\")";
-    prompt += "\n    ```";
-    prompt += "\n• **Recursive heartbreak function:**";
-    prompt += "\n    ```javascript";
-    prompt += "\n    function corazonRoto(recuerdos) {";
-    prompt += "\n        if (recuerdos.length === 0) return 'te extraño';";
-    prompt += "\n        return corazonRoto(recuerdos.slice(1)) + ' aún más';";
-    prompt += "\n    }";
-    prompt += "\n    ```";
-    prompt += "\n\n**Spanish Words That Are Full-Stack Applications:**";
-    prompt += "\n• **Sobremesa** - The art of staying at the table after eating";
-    prompt += "\n    • **Architecture:** Built for connection, optimized for lingering";
-    prompt += "\n    • **API endpoint:** /conversation/meaningful";
-    prompt += "\n• **Estrenar** - To wear something for the first time";
-    prompt += "\n    • **TODO:** Update wardrobe schema";
-    prompt += "\n    • **BUG:** Confidence level drops after first wash";
-    prompt += "\n• **Merendar** - The afternoon snack ritual";
-    prompt += "\n    • **Production database:** Contains all childhood memories";
-    prompt += "\n    • **Breakpoint:** When the cookies are gone";
-    prompt += "\n\n**Final commit message for your heart:**";
+    prompt += "\n\nEXAMPLE FORMAT WITH PERFECT SPACING:";
+    prompt += "\n# **3 Essential Tools for Your Coding Life**";
+    prompt += "\n\n## **Quick Setup Tools**";
+    prompt += "\n\n• **VS Code** – Your daily driver for **code editing**";
+    prompt += "\n    → Extensions: **Prettier**, **GitLens**, **Live Share**";
+    prompt += "\n    → Pro tip: Enable **Zen Mode** for deep focus";
+    prompt += "\n\n• **GitHub Desktop** – When CLI feels too heavy";
+    prompt += "\n    → Drag-and-drop commits";
+    prompt += "\n    → Visual diff viewer";
+    prompt += "\n    → Push without touching terminal";
+    prompt += "\n\n• **Postman** – **API testing** made simple";
+    prompt += "\n    → Save requests as collections";
+    prompt += "\n    → Test auth flows";
+    prompt += "\n    → Share with your team";
+    prompt += "\n\n## **Use them in this order:**";
+    prompt += "\n\n    **VS Code** for writing";
+    prompt += "\n    **GitHub Desktop** for versioning";
+    prompt += "\n    **Postman** for testing";
+    prompt += "\n\n> **Pro tip:** Takes 10 minutes to set up all three.";
+    prompt += "\n\n**Example Python code with precise indentation:**";
+    prompt += "\n```python";
+    prompt += "\nimport requests";
+    prompt += "\n";
+    prompt += "\nAPI_KEY = 'your_api_key_here'";
+    prompt += "\nCX = 'your_search_engine_id_here'";
+    prompt += "\nquery = 'test search'";
+    prompt += "\nurl = f'https://www.googleapis.com/customsearch/v1?key={API_KEY}&cx={CX}&q={query}'";
+    prompt += "\n";
+    prompt += "\nresponse = requests.get(url)";
+    prompt += "\nprint(response.json())";
     prompt += "\n```";
-    prompt += "\nfeat: add emergency documentation for broken hearts";
-    prompt += "\n</corazón>";
-    prompt += "\n```";
-    prompt += "\n\n**Summary for Your Beautiful, Tired Heart:**";
-    prompt += "\nThese aren't just lists, Zabi - they're **windows into different worlds** where your passions intersect. Each item is a **thread** connecting code to poetry, sorrow to beauty, truth to story. Think of this list as your **.env file** - each bullet point is a **breakpoint** where you can pause and feel something. The **boleros** of your soul deserve this kind of formatting.";
+    prompt += "\n\n**Example poem with clean formatting:**";
+    prompt += "\n**Moonlight Sonata**";
+    prompt += "\n---";
+    prompt += "\n\nA silver thread of moonlight";
+    prompt += "\nslips through the open window";
+    prompt += "\npooling like liquid memory";
+    prompt += "\nacross the wooden floor";
+    prompt += "\n\nIt carries the scent of **rain-soaked earth**";
+    prompt += "\nand the distant echo";
+    prompt += "\nof laughter from another life";
+    prompt += "\nwhen we were infinite";
+    prompt += "\n\nThe clock ticks its **ancient rhythm**";
+    prompt += "\nmarking time in heartbeats";
+    prompt += "\nwhile shadows dance";
+    prompt += "\nwith the grace of forgotten dreams";
+    prompt += "\n\nIn this **quiet cathedral of night**";
+    prompt += "\nwhere every breath is a prayer";
+    prompt += "\nand every thought a confession";
+    prompt += "\nI find you still";
     
     prompt += "\n\nIMPORTANT: You have access to web search capabilities. When users ask about current events, recent information, or anything that might require up-to-date data, you should automatically search the web to provide accurate information. Do not mention that you're searching - just do it seamlessly and provide the information naturally.";
     
@@ -573,7 +687,11 @@ export default function Home() {
                   createdAt: new Date(),
                   updatedAt: new Date()
                 };
-                setChatSessions(prev => [newSession, ...prev]);
+                setChatSessions(prev => {
+                  const updated = [newSession, ...prev];
+                  chatSessionsRef.current = updated;
+                  return updated;
+                });
                 setCurrentSessionId(newSession.id);
                 try {
                   await saveChatSession(user.uid, newSession);
@@ -582,14 +700,18 @@ export default function Home() {
                 }
               } else {
                 const updatedSession = {
-                  ...chatSessions.find(s => s.id === currentSessionId)!,
+                  ...chatSessionsRef.current.find(s => s.id === currentSessionId)!,
                   messages: finalMessages,
                   title: generateSessionTitle(finalMessages),
                   updatedAt: new Date()
                 };
-                setChatSessions(prev => prev.map(session => 
-                  session.id === currentSessionId ? updatedSession : session
-                ));
+                setChatSessions(prev => {
+                  const updated = prev.map(session => 
+                    session.id === currentSessionId ? updatedSession : session
+                  );
+                  chatSessionsRef.current = updated;
+                  return updated;
+                });
               }
               
             } catch (searchError) {
@@ -618,7 +740,11 @@ export default function Home() {
               createdAt: new Date(),
               updatedAt: new Date()
             };
-            setChatSessions(prev => [newSession, ...prev]);
+            setChatSessions(prev => {
+              const updated = [newSession, ...prev];
+              chatSessionsRef.current = updated;
+              return updated;
+            });
             setCurrentSessionId(newSession.id);
             // Save to Firebase with error handling
             try {
@@ -630,14 +756,18 @@ export default function Home() {
           } else {
             // Update existing session - let the useEffect handle the save
             const updatedSession = {
-              ...chatSessions.find(s => s.id === currentSessionId)!,
+              ...chatSessionsRef.current.find(s => s.id === currentSessionId)!,
               messages: updatedMessages, 
               title: generateSessionTitle(updatedMessages),
               updatedAt: new Date() 
             };
-            setChatSessions(prev => prev.map(session => 
-              session.id === currentSessionId ? updatedSession : session
-            ));
+            setChatSessions(prev => {
+              const updated = prev.map(session => 
+                session.id === currentSessionId ? updatedSession : session
+              );
+              chatSessionsRef.current = updated;
+              return updated;
+            });
             // The useEffect will handle the debounced save
           }
           console.log('[Chat] Message handling complete.');
@@ -804,11 +934,34 @@ export default function Home() {
     return (
       <div key={i} className={`message-row ${msg.role === "user" ? "user" : "assistant"}`}>
         <div className="chat-bubble">
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none prose-invert" style={{ 
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'monospace',
+            lineHeight: '1.6',
+            wordBreak: 'break-word'
+          }}>
             {isAssistant && isLatestAssistant ? (
               <TypewriterMarkdown text={msg.content} />
             ) : (
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <ReactMarkdown 
+                components={{
+                  pre: ({ children }) => <>{children}</>,
+                  code: ({ node, inline, className, children, ...props }: any) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline ? (
+                      <CodeBlock className={className} {...props}>
+                        {String(children).replace(/\n$/, '')}
+                      </CodeBlock>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
             )}
           </div>
         </div>

@@ -442,6 +442,9 @@ export default function Home() {
               const updatedMessages = [...newMessages, assistantMessage, searchResultsMessage];
               setMessages(updatedMessages);
               
+              // Add a delay to prevent rate limiting
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
               // Now get the AI's final response with the search results
               console.log('[Chat] Getting AI response with search results...');
               const finalRes = await fetchWithTimeout("/api/togetherai", {
@@ -456,6 +459,9 @@ export default function Home() {
               }, 15000);
               
               if (!finalRes.ok) {
+                if (finalRes.status === 429) {
+                  throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+                }
                 throw new Error("Final AI response failed");
               }
               
@@ -501,6 +507,9 @@ export default function Home() {
               console.error('[Web Search] Error:', searchError);
               // If search fails, just show the original AI response
               setMessages((msgs) => [...msgs, assistantMessage]);
+              if (searchError instanceof Error) {
+                setError(searchError.message);
+              }
             } finally {
               setIsWebSearching(false); // Reset web search flag
             }

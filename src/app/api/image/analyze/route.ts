@@ -7,7 +7,7 @@ interface ImageClassificationResult {
 
 export async function POST(req: NextRequest) {
   const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
-  // Use a simple image classification model that works with free API
+  // Use the proper image classification model with the new API key
   const HF_API_URL = 'https://api-inference.huggingface.co/models/google/vit-base-patch16-224';
   
   if (!HF_API_KEY) {
@@ -59,15 +59,6 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Image Analyze] HuggingFace API error:', response.status, errorText);
-      
-      // Check if it's an authentication issue
-      if (response.status === 403) {
-        return NextResponse.json({ 
-          error: 'HuggingFace API authentication failed. Please check your API key.',
-          detail: 'The API key might be invalid or the model requires special access.',
-          status: response.status 
-        }, { status: 403 });
-      }
       
       return NextResponse.json({ 
         error: 'Image analysis failed', 

@@ -6,16 +6,6 @@ import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession 
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { motion, AnimatePresence } from "framer-motion";
 
-interface HFClassifyResult {
-  label: string;
-  score?: number;
-}
-interface HFDetectResult {
-  label: string;
-  score?: number;
-  box?: unknown;
-}
-
 function Typewriter({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
@@ -317,8 +307,6 @@ export default function Home() {
         newMessages.push(userMessage);
         setMessages(newMessages);
         
-        // Store the input content before clearing it
-        const inputContent = input;
         setInput("");
         
         // Training data saving removed - Kimi is already well-trained

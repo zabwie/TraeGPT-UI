@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface GoogleSearchItem {
+  title: string;
+  link: string;
+  snippet: string;
+}
+
+interface GoogleSearchResponse {
+  items?: GoogleSearchItem[];
+  searchInformation?: {
+    totalResults: string;
+    searchTime: number;
+  };
+}
+
 export async function POST(req: NextRequest) {
   const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
   const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
@@ -49,14 +63,14 @@ export async function POST(req: NextRequest) {
       }, { status: response.status });
     }
     
-    const data = await response.json();
+    const data = await response.json() as GoogleSearchResponse;
     console.log('[Web Search] Success, elapsed:', elapsed + 'ms, results:', data.items?.length || 0);
     
     // Format the search results for the AI
     let searchResults = `Web search results for "${query}":\n\n`;
     
     if (data.items && data.items.length > 0) {
-      data.items.forEach((item: any, index: number) => {
+      data.items.forEach((item: GoogleSearchItem, index: number) => {
         searchResults += `${index + 1}. ${item.title}\n`;
         searchResults += `   URL: ${item.link}\n`;
         searchResults += `   Snippet: ${item.snippet}\n\n`;

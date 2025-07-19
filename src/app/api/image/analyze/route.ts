@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface OWLViTResult {
+  label: string;
+  score?: number;
+  box?: {
+    xmin: number;
+    ymin: number;
+    xmax: number;
+    ymax: number;
+  };
+}
+
 export async function POST(req: NextRequest) {
   const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
   const HF_API_URL = 'https://api-inference.huggingface.co/models/google/owlvit-base-patch32';
@@ -49,14 +60,14 @@ export async function POST(req: NextRequest) {
       }, { status: response.status });
     }
     
-    const data = await response.json();
+    const data = await response.json() as OWLViTResult[];
     console.log('[Image Analyze] Success, elapsed:', elapsed + 'ms');
     
     // Process the OWL-ViT output to create a text description
     let imageDescription = "I can see in this image: ";
     
     if (data && Array.isArray(data) && data.length > 0) {
-      const detectedObjects = data.map((item: any) => {
+      const detectedObjects = data.map((item: OWLViTResult) => {
         const label = item.label || 'object';
         const score = item.score ? ` (${(item.score * 100).toFixed(1)}% confidence)` : '';
         return label + score;

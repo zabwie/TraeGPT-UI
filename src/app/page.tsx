@@ -374,8 +374,12 @@ export default function Home() {
               body: form 
             }, 30000); // 30 seconds timeout for image analysis
             
+            console.log('[sendMessage] Image analysis response status:', analyzeRes.status);
+            
             if (!analyzeRes.ok) {
-              throw new Error("Image analysis failed");
+              const errorText = await analyzeRes.text();
+              console.error('[sendMessage] Image analysis failed with status:', analyzeRes.status, 'error:', errorText);
+              throw new Error(`Image analysis failed: ${analyzeRes.status} - ${errorText}`);
             }
             
             const analyzeData = await analyzeRes.json();
@@ -396,7 +400,8 @@ export default function Home() {
             
           } catch (e) {
             console.error('[sendMessage] Image analysis error:', e);
-            setError("Image analysis failed or timed out. Please try again.");
+            const errorMessage = e instanceof Error ? e.message : 'Image analysis failed or timed out. Please try again.';
+            setError(errorMessage);
             setLoading(false);
             return;
           }

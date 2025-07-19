@@ -518,7 +518,7 @@ export default function Home() {
             const analyzeRes = await fetchWithTimeout("/api/image/analyze", { 
               method: "POST", 
               body: form 
-            }, 30000); // 30 seconds timeout for image analysis
+            }, 60000); // 60 seconds timeout for image analysis
             
             console.log('[sendMessage] Image analysis response status:', analyzeRes.status);
             
@@ -581,7 +581,7 @@ export default function Home() {
                 ...newMessages.map((m) => ({ role: m.role, content: m.content })),
               ],
             }),
-          }, 30000); // 30 seconds timeout
+          }, 60000); // 60 seconds timeout
           const elapsed = Date.now() - start;
           setResponseTime(elapsed);
           console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
@@ -609,7 +609,7 @@ export default function Home() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query: searchQuery, numResults: 5 }),
-              }, 30000);
+              }, 60000);
               
               if (!searchRes.ok) {
                 throw new Error("Web search failed");
@@ -642,7 +642,7 @@ export default function Home() {
                     ...updatedMessages.map((m) => ({ role: m.role, content: m.content })),
                   ],
                 }),
-              }, 30000);
+              }, 60000);
               
               if (!finalRes.ok) {
                 if (finalRes.status === 429) {

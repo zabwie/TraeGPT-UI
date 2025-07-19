@@ -472,7 +472,7 @@ export default function Home() {
                 ...newMessages.map((m) => ({ role: m.role, content: m.content })),
               ],
             }),
-          }, 15000); // 15 seconds timeout
+          }, 30000); // 30 seconds timeout
           const elapsed = Date.now() - start;
           setResponseTime(elapsed);
           console.log(`[Chat] TogetherAI response time: ${elapsed}ms`);
@@ -500,7 +500,7 @@ export default function Home() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query: searchQuery, numResults: 5 }),
-              }, 15000);
+              }, 30000);
               
               if (!searchRes.ok) {
                 throw new Error("Web search failed");
@@ -533,7 +533,7 @@ export default function Home() {
                     ...updatedMessages.map((m) => ({ role: m.role, content: m.content })),
                   ],
                 }),
-              }, 15000);
+              }, 30000);
               
               if (!finalRes.ok) {
                 if (finalRes.status === 429) {

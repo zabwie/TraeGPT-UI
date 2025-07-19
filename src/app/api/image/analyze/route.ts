@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface OWLViTResult {
+interface ImageClassificationResult {
   label: string;
-  score?: number;
-  box?: {
-    xmin: number;
-    ymin: number;
-    xmax: number;
-    ymax: number;
-  };
+  score: number;
 }
 
 export async function POST(req: NextRequest) {
   const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
-  const HF_API_URL = 'https://api-inference.huggingface.co/models/google/owlvit-base-patch32';
+  // Use a simple image classification model that works with free API
+  const HF_API_URL = 'https://api-inference.huggingface.co/models/google/vit-base-patch16-224';
   
   if (!HF_API_KEY) {
     console.error('[Image Analyze] HuggingFace API key not set');
@@ -21,6 +16,8 @@ export async function POST(req: NextRequest) {
   }
   
   console.log('[Image Analyze] API key found, starting analysis...');
+  console.log('[Image Analyze] API key length:', HF_API_KEY.length);
+  console.log('[Image Analyze] API key starts with:', HF_API_KEY.substring(0, 10) + '...');
   
   try {
     const formData = await req.formData();
@@ -62,6 +59,16 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Image Analyze] HuggingFace API error:', response.status, errorText);
+      
+      // Check if it's an authentication issue
+      if (response.status === 403) {
+        return NextResponse.json({ 
+          error: 'HuggingFace API authentication failed. Please check your API key.',
+          detail: 'The API key might be invalid or the model requires special access.',
+          status: response.status 
+        }, { status: 403 });
+      }
+      
       return NextResponse.json({ 
         error: 'Image analysis failed', 
         detail: errorText,
@@ -69,15 +76,15 @@ export async function POST(req: NextRequest) {
       }, { status: response.status });
     }
     
-    const data = await response.json() as OWLViTResult[];
+    const data = await response.json() as ImageClassificationResult[];
     console.log('[Image Analyze] Success, elapsed:', elapsed + 'ms, data length:', data?.length || 0);
-    console.log('[Image Analyze] Raw data sample:', JSON.stringify(data?.slice(0, 2)));
+    console.log('[Image Analyze] Raw data sample:', JSON.stringify(data?.slice(0, 3)));
     
-    // Process the OWL-ViT output to create a text description
+    // Process the image classification output to create a text description
     let imageDescription = "I can see in this image: ";
     
     if (data && Array.isArray(data) && data.length > 0) {
-      const detectedObjects = data.map((item: OWLViTResult) => {
+      const detectedObjects = data.slice(0, 5).map((item: ImageClassificationResult) => {
         const label = item.label || 'object';
         const score = item.score ? ` (${(item.score * 100).toFixed(1)}% confidence)` : '';
         return label + score;

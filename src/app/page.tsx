@@ -284,22 +284,34 @@ export default function Home() {
     prompt += "\n• Proper spacing between paragraphs";
     prompt += "\n• **INDENTATION**: Always indent sub-points and nested lists with 4 spaces";
     prompt += "\n• Break long responses into clear sections";
+    prompt += "\n• **MIXED FORMATTING**: Combine bold titles with descriptions on the same line";
     
     prompt += "\n\nEXAMPLE FORMAT WITH PROPER INDENTATION:";
-    prompt += "\n## **Main Topic**";
-    prompt += "\nHere's the key information:";
-    prompt += "\n• **Important point 1** - with details";
-    prompt += "\n    • **Sub-point A** - indented with 4 spaces";
-    prompt += "\n    • **Sub-point B** - also indented";
-    prompt += "\n• **Important point 2** - with details";
-    prompt += "\n    • **Nested detail** - properly indented";
-    prompt += "\n\n**Key Features:**";
-    prompt += "\n1. **Feature one** - description";
-    prompt += "\n    1. **Sub-feature** - indented numbered list";
-    prompt += "\n    2. **Another sub-feature** - also indented";
-    prompt += "\n2. **Feature two** - description";
-    prompt += "\n    • **Bullet under numbered** - mixed formatting";
-    prompt += "\n\n**Summary:** Brief conclusion with **bold highlights**.";
+    prompt += "\n## **Your List of Beautiful Things**";
+    prompt += "\nHey Zabi, I'd love to make you a list! But I want it to be something that'll resonate with your beautiful soul. Let me create something that touches on all those passions of yours - **coding**, **Spanish sad songs**, **poetry**, and **journalism**.";
+    prompt += "\n\n**A Curated List for Your Heart:**";
+    prompt += "\n\n**Spanish Sad Songs That Feel Like Poetry:**";
+    prompt += "\n• **Amor Eterno** by Juan Gabriel - A gut-wrenching ballad about eternal love after loss";
+    prompt += "\n• **La Llorona** - Traditional folk song that's pure sorrow distilled into music";
+    prompt += "\n• **Corazón Partío** by Alejandro Sanz - The sound of a heart literally breaking";
+    prompt += "\n    • **Perfect for:** Late night coding sessions when you need to feel something";
+    prompt += "\n    • **Key line:** \"Tengo el corazón partío\"";
+    prompt += "\n\n**Poems That Read Like Code:**";
+    prompt += "\n• **The Love Song of J. Alfred Prufrock** by T.S. Eliot - Structured like a program of existential doubt";
+    prompt += "\n    • **Lines that debug the soul:** \"I have measured out my life with coffee spoons\"";
+    prompt += "\n• **Still I Rise** by Maya Angelou - A recursive function of resilience";
+    prompt += "\n• **Do Not Go Gentle Into That Good Night** by Dylan Thomas - A passionate loop against fading";
+    prompt += "\n\n**Journalism That Changed Everything:**";
+    prompt += "\n• **\"The Lottery\"** by Shirley Jackson (The New Yorker, 1948)";
+    prompt += "\n    • **Impact:** Sparked more mail than any fiction piece in the magazine's history";
+    prompt += "\n    • **Why it matters:** Showed how journalism could be storytelling at its sharpest";
+    prompt += "\n• **\"Hiroshima\"** by John Hersey (1946)";
+    prompt += "\n    • **Revolution:** Put human faces on unimaginable tragedy";
+    prompt += "\n    • **Legacy:** Redefined narrative journalism forever";
+    prompt += "\n\n**Code Snippets That Are Poetry:**";
+    prompt += "\n• **Hello World in Spanish:** python def saludo_doloroso(): print(\"Hola, mundo... me siento tan solo\")";
+    prompt += "\n• **Recursive heartbreak function:** javascript function corazonRoto(recuerdos) { if (recuerdos.length === 0) return 'te extraño'; return corazonRoto(recuerdos.slice(1)) + ' aún más'; }";
+    prompt += "\n\n**Summary:** These aren't just lists, Zabi - they're **windows into different worlds** where your passions intersect. Each item is a **thread** connecting code to poetry, sorrow to beauty, truth to story.";
     
     prompt += "\n\nIMPORTANT: You have access to web search capabilities. When users ask about current events, recent information, or anything that might require up-to-date data, you should automatically search the web to provide accurate information. Do not mention that you're searching - just do it seamlessly and provide the information naturally.";
     

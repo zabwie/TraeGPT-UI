@@ -65,22 +65,6 @@ function CodeBlock({ children, className }: { children: string, className?: stri
   );
 }
 
-function Typewriter({ text }: { text: string }) {
-  const [displayed, setDisplayed] = useState("");
-  useEffect(() => {
-    setDisplayed("");
-    if (!text) return;
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) clearInterval(interval);
-    }, 14);
-    return () => clearInterval(interval);
-  }, [text]);
-  return <span>{displayed}</span>;
-}
-
 function TypewriterMarkdown({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
@@ -104,11 +88,10 @@ function TypewriterMarkdown({ text }: { text: string }) {
       <ReactMarkdown 
         components={{
           pre: ({ children }) => <>{children}</>,
-          code: ({ node, inline, className, children, ...props }: any) => {
-            const match = /language-(\w+)/.exec(className || '');
+          code: ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: any }) => {
             return !inline ? (
               <CodeBlock className={className} {...props}>
-                {String(children).replace(/\n$/, '')}
+                {String(children || '').replace(/\n$/, '')}
               </CodeBlock>
             ) : (
               <code className={className} {...props}>
@@ -946,11 +929,10 @@ export default function Home() {
               <ReactMarkdown 
                 components={{
                   pre: ({ children }) => <>{children}</>,
-                  code: ({ node, inline, className, children, ...props }: any) => {
-                    const match = /language-(\w+)/.exec(className || '');
+                  code: ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: any }) => {
                     return !inline ? (
                       <CodeBlock className={className} {...props}>
-                        {String(children).replace(/\n$/, '')}
+                        {String(children || '').replace(/\n$/, '')}
                       </CodeBlock>
                     ) : (
                       <code className={className} {...props}>

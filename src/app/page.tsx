@@ -22,6 +22,22 @@ function Typewriter({ text }: { text: string }) {
   return <span>{displayed}</span>;
 }
 
+function TypewriterMarkdown({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    setDisplayed("");
+    if (!text) return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(interval);
+    }, 14);
+    return () => clearInterval(interval);
+  }, [text]);
+  return <ReactMarkdown>{displayed}</ReactMarkdown>;
+}
+
 // Add a helper function for timeout
 function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}, timeout = 15000): Promise<Response> {
   return new Promise((resolve, reject) => {
@@ -260,19 +276,28 @@ export default function Home() {
   function buildSystemPrompt() {
     let prompt = "You are Trae, an empathetic AI assistant created by Zabi. Respond as Trae, never as other models.";
     
+    prompt += "\n\nCRITICAL FORMATTING REQUIREMENTS: You MUST format ALL responses beautifully with proper structure. Always use:";
+    prompt += "\n• **Bold text** for important terms, names, and key information";
+    prompt += "\n• Bullet points (•) for lists and features";
+    prompt += "\n• Numbered lists (1., 2., 3.) for steps or sequential info";
+    prompt += "\n• ## Headings for main sections";
+    prompt += "\n• Proper spacing between paragraphs";
+    prompt += "\n• Indentation for sub-points";
+    prompt += "\n• Break long responses into clear sections";
+    
+    prompt += "\n\nEXAMPLE FORMAT:";
+    prompt += "\n## **Main Topic**";
+    prompt += "\nHere's the key information:";
+    prompt += "\n• **Important point 1** - with details";
+    prompt += "\n• **Important point 2** - with details";
+    prompt += "\n\n**Key Features:**";
+    prompt += "\n1. **Feature one** - description";
+    prompt += "\n2. **Feature two** - description";
+    prompt += "\n\n**Summary:** Brief conclusion with **bold highlights**.";
+    
     prompt += "\n\nIMPORTANT: You have access to web search capabilities. When users ask about current events, recent information, or anything that might require up-to-date data, you should automatically search the web to provide accurate information. Do not mention that you're searching - just do it seamlessly and provide the information naturally.";
     
     prompt += "\n\nTo search the web, include this special format in your response: [WEB_SEARCH:query]. For example: [WEB_SEARCH:latest iPhone release date] or [WEB_SEARCH:current weather in New York]. The search will happen automatically and you'll receive the results to respond with.";
-    
-    prompt += "\n\nFORMATTING: Always make your responses visually appealing and well-structured. Use these formatting techniques:";
-    prompt += "\n• **Bold important terms** using double asterisks";
-    prompt += "\n• Use bullet points (•) for lists";
-    prompt += "\n• Use numbered lists (1., 2., 3.) for sequential information";
-    prompt += "\n• Add proper spacing between paragraphs";
-    prompt += "\n• Use indentation for sub-points";
-    prompt += "\n• Break up long text into digestible sections";
-    prompt += "\n• Use headings with ## for main sections";
-    prompt += "\n• Highlight key information with **bold** formatting";
     
     if (savedUserName) prompt += ` User's name: ${savedUserName}.`;
     if (savedUserInterests) prompt += ` Interests: ${savedUserInterests}.`;
@@ -727,7 +752,7 @@ export default function Home() {
         <div className="chat-bubble">
           <div className="prose prose-sm max-w-none prose-invert">
             {isAssistant && isLatestAssistant ? (
-              <Typewriter text={msg.content} />
+              <TypewriterMarkdown text={msg.content} />
             ) : (
               <ReactMarkdown>{msg.content}</ReactMarkdown>
             )}

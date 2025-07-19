@@ -264,6 +264,16 @@ export default function Home() {
     
     prompt += "\n\nTo search the web, include this special format in your response: [WEB_SEARCH:query]. For example: [WEB_SEARCH:latest iPhone release date] or [WEB_SEARCH:current weather in New York]. The search will happen automatically and you'll receive the results to respond with.";
     
+    prompt += "\n\nFORMATTING: Always make your responses visually appealing and well-structured. Use these formatting techniques:";
+    prompt += "\n• **Bold important terms** using double asterisks";
+    prompt += "\n• Use bullet points (•) for lists";
+    prompt += "\n• Use numbered lists (1., 2., 3.) for sequential information";
+    prompt += "\n• Add proper spacing between paragraphs";
+    prompt += "\n• Use indentation for sub-points";
+    prompt += "\n• Break up long text into digestible sections";
+    prompt += "\n• Use headings with ## for main sections";
+    prompt += "\n• Highlight key information with **bold** formatting";
+    
     if (savedUserName) prompt += ` User's name: ${savedUserName}.`;
     if (savedUserInterests) prompt += ` Interests: ${savedUserInterests}.`;
     if (savedAnswerStyle) {

@@ -88,13 +88,13 @@ function TypewriterMarkdown({ text }: { text: string }) {
       <ReactMarkdown 
         components={{
           pre: ({ children }) => <>{children}</>,
-          code: ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: any }) => {
+          code: ({ inline, className, children }: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
             return !inline ? (
-              <CodeBlock className={className} {...props}>
+              <CodeBlock className={className}>
                 {String(children || '').replace(/\n$/, '')}
               </CodeBlock>
             ) : (
-              <code className={className} {...props}>
+              <code className={className}>
                 {children}
               </code>
             );
@@ -929,13 +929,13 @@ export default function Home() {
               <ReactMarkdown 
                 components={{
                   pre: ({ children }) => <>{children}</>,
-                  code: ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode; [key: string]: any }) => {
+                  code: ({ inline, className, children }: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
                     return !inline ? (
-                      <CodeBlock className={className} {...props}>
+                      <CodeBlock className={className}>
                         {String(children || '').replace(/\n$/, '')}
                       </CodeBlock>
                     ) : (
-                      <code className={className} {...props}>
+                      <code className={className}>
                         {children}
                       </code>
                     );

@@ -84,6 +84,8 @@ export default function Home() {
   const [prefsLoading, setPrefsLoading] = useState(false);
   // Add debounce ref for Firebase saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Add state to track web search
+  const [isWebSearching, setIsWebSearching] = useState(false);
 
   // Handle authentication state
   useEffect(() => {
@@ -268,6 +270,10 @@ export default function Home() {
   function buildSystemPrompt() {
     let prompt = "You are Trae, an empathetic AI assistant created by Zabi. Respond as Trae, never as other models.";
     
+    prompt += "\n\nIMPORTANT: You have access to web search capabilities. When users ask about current events, recent information, or anything that might require up-to-date data, you should automatically search the web to provide accurate information. Do not mention that you're searching - just do it seamlessly and provide the information naturally.";
+    
+    prompt += "\n\nTo search the web, include this special format in your response: [WEB_SEARCH:query]. For example: [WEB_SEARCH:latest iPhone release date] or [WEB_SEARCH:current weather in New York]. The search will happen automatically and you'll receive the results to respond with.";
+    
     if (savedUserName) prompt += ` User's name: ${savedUserName}.`;
     if (savedUserInterests) prompt += ` Interests: ${savedUserInterests}.`;
     if (savedAnswerStyle) {
@@ -301,8 +307,10 @@ export default function Home() {
       setError(null);
       
       let newMessages = [...messages];
+      let hasTextInput = false;
       console.log('[sendMessage] Input trim result:', input.trim());
       if (input.trim()) {
+        hasTextInput = true;
         console.log('[sendMessage] Processing text input:', input.substring(0, 50) + '...');
         const userMessage = { role: "user" as const, content: input };
         console.log('[sendMessage] Created user message:', userMessage);
@@ -332,46 +340,44 @@ export default function Home() {
             },
           ];
           setMessages(newMessages);
-          // 3. Send image to Next.js endpoints for analysis (classification, detection, captioning)
+          
+          // 3. Send image to HuggingFace OWL-ViT for intelligent analysis
           const form = new FormData();
           form.append("file", image);
           try {
-            // Call all three endpoints in parallel with timeout
-            const [classifyRes, detectRes, captionRes] = await Promise.all([
-              fetchWithTimeout("/api/image/classify", { method: "POST", body: form }),
-              fetchWithTimeout("/api/image/detect", { method: "POST", body: form }),
-              fetchWithTimeout("/api/image/caption", { method: "POST", body: form }),
-            ]);
-            if (!classifyRes.ok && !detectRes.ok && !captionRes.ok) {
-              throw new Error("Image analysis failed: All endpoints failed");
+            console.log('[sendMessage] Sending image to HuggingFace OWL-ViT...');
+            const analyzeRes = await fetchWithTimeout("/api/image/analyze", { 
+              method: "POST", 
+              body: form 
+            }, 30000); // 30 seconds timeout for image analysis
+            
+            if (!analyzeRes.ok) {
+              throw new Error("Image analysis failed");
             }
-            const [classify, detect, caption] = await Promise.all([
-              classifyRes.ok ? classifyRes.json() : null,
-              detectRes.ok ? detectRes.json() : null,
-              captionRes.ok ? captionRes.json() : null,
-            ]);
-            // Compose a summary string for the AI
-            let summary = "Image analysis:";
-            if (classify && Array.isArray(classify) && classify.length > 0) {
-              summary += ` Classification: ${classify.map((c: HFClassifyResult) => c.label + (c.score ? ` (${(c.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
-            }
-            if (detect && Array.isArray(detect) && detect.length > 0) {
-              summary += ` Objects detected: ${detect.map((o: HFDetectResult) => o.label + (o.score ? ` (${(o.score * 100).toFixed(1)}%)` : "")).join(", ")}.`;
-            }
-            if (caption && Array.isArray(caption) && caption[0]?.generated_text) {
-              summary += ` Caption: ${caption[0].generated_text}`;
-            }
-            setMessages((msgs) => [
-              ...msgs,
-              {
-                role: "assistant",
-                content: summary,
-                imageResult: { classification: classify, object_detection: detect, caption: caption?.[0]?.generated_text },
-              },
-            ]);
+            
+            const analyzeData = await analyzeRes.json();
+            console.log('[sendMessage] Image analysis result:', analyzeData);
+            
+            // Create a user message with the image description
+            const imageDescription = analyzeData.description || "I can see various objects in this image.";
+            const userImageMessage = { 
+              role: "user" as const, 
+              content: imageDescription 
+            };
+            
+            // Add the image description as a user message
+            newMessages = [...newMessages, userImageMessage];
+            setMessages(newMessages);
+            
+            console.log('[sendMessage] Added image description to conversation:', imageDescription);
+            
           } catch (e) {
+            console.error('[sendMessage] Image analysis error:', e);
             setError("Image analysis failed or timed out. Please try again.");
+            setLoading(false);
+            return;
           }
+          
           setImage(null);
           setImagePreviewUrl(null);
           if (fileInputRef.current) fileInputRef.current.value = "";
@@ -383,10 +389,11 @@ export default function Home() {
         }
       }
       
-      // Use the stored input content instead of the cleared input
-      const inputToSend = input.trim() || (input.trim() ? input : '');
-      console.log('[sendMessage] About to check input for TogetherAI:', inputToSend);
-      if (inputToSend) {
+      // Send to TogetherAI if we have text input OR if we just processed an image
+      const shouldSendToAI = hasTextInput || image;
+      console.log('[sendMessage] Should send to TogetherAI:', shouldSendToAI, 'hasTextInput:', hasTextInput, 'image:', !!image);
+      
+      if (shouldSendToAI) {
         console.log('[sendMessage] Sending to TogetherAI...');
         try {
           console.log('[Chat] Sending message to TogetherAI...');
@@ -414,7 +421,105 @@ export default function Home() {
             role: "assistant" as const, 
             content: data.choices?.[0]?.message?.content || "[No response]" 
           };
-          setMessages((msgs) => [...msgs, assistantMessage]);
+          
+          // Check if the AI wants to search the web
+          const webSearchMatch = assistantMessage.content.match(/\[WEB_SEARCH:(.*?)\]/);
+          
+          if (webSearchMatch) {
+            const searchQuery = webSearchMatch[1].trim();
+            console.log('[Web Search] AI requested search for:', searchQuery);
+            setIsWebSearching(true); // Set web search flag
+            try {
+              // Perform the web search
+              const searchRes = await fetchWithTimeout("/api/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: searchQuery, numResults: 5 }),
+              }, 15000);
+              
+              if (!searchRes.ok) {
+                throw new Error("Web search failed");
+              }
+              
+              const searchData = await searchRes.json();
+              console.log('[Web Search] Search completed, results:', searchData.results.substring(0, 100) + '...');
+              
+              // Add the search results as a system message
+              const searchResultsMessage: Message = {
+                role: "system" as const,
+                content: searchData.results
+              };
+              
+              // Update messages with both the AI response and search results
+              const updatedMessages = [...newMessages, assistantMessage, searchResultsMessage];
+              setMessages(updatedMessages);
+              
+              // Now get the AI's final response with the search results
+              console.log('[Chat] Getting AI response with search results...');
+              const finalRes = await fetchWithTimeout("/api/togetherai", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  messages: [
+                    { role: 'system', content: buildSystemPrompt() },
+                    ...updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+                  ],
+                }),
+              }, 15000);
+              
+              if (!finalRes.ok) {
+                throw new Error("Final AI response failed");
+              }
+              
+              const finalData = await finalRes.json();
+              const finalAssistantMessage: Message = {
+                role: "assistant" as const,
+                content: finalData.choices?.[0]?.message?.content || "[No response]"
+              };
+              
+              // Replace the messages with the final response
+              const finalMessages = [...newMessages, finalAssistantMessage];
+              setMessages(finalMessages);
+              
+              // Update chat session with final messages
+              if (!currentSessionId) {
+                const newSession: ChatSession = {
+                  id: Date.now().toString(),
+                  title: generateSessionTitle(finalMessages),
+                  messages: finalMessages,
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                };
+                setChatSessions(prev => [newSession, ...prev]);
+                setCurrentSessionId(newSession.id);
+                try {
+                  await saveChatSession(user.uid, newSession);
+                } catch (error) {
+                  console.error('[sendMessage] Error saving new chat session:', error);
+                }
+              } else {
+                const updatedSession = {
+                  ...chatSessions.find(s => s.id === currentSessionId)!,
+                  messages: finalMessages,
+                  title: generateSessionTitle(finalMessages),
+                  updatedAt: new Date()
+                };
+                setChatSessions(prev => prev.map(session => 
+                  session.id === currentSessionId ? updatedSession : session
+                ));
+              }
+              
+            } catch (searchError) {
+              console.error('[Web Search] Error:', searchError);
+              // If search fails, just show the original AI response
+              setMessages((msgs) => [...msgs, assistantMessage]);
+            } finally {
+              setIsWebSearching(false); // Reset web search flag
+            }
+          } else {
+            // No web search needed, just add the AI response
+            setMessages((msgs) => [...msgs, assistantMessage]);
+          }
           
           // Create or update chat session - with debounced save
           const updatedMessages: Message[] = [...newMessages, assistantMessage];
@@ -460,7 +565,7 @@ export default function Home() {
           }
         }
       } else {
-        console.log('[sendMessage] Input is empty after processing, not sending to TogetherAI');
+        console.log('[sendMessage] No text input and no image, not sending to TogetherAI');
       }
       console.log('[sendMessage] Function ending, setting loading to false');
       setLoading(false);
@@ -768,7 +873,7 @@ export default function Home() {
                       <div style={{ background: 'var(--text-secondary)', animationDelay: '0.2s' }} className="w-2 h-2 rounded-full animate-bounce"></div>
                     </div>
                     <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      AI is thinking...
+                      {isWebSearching ? "Searching the web..." : "AI is thinking..."}
                       {responseTime && <span style={{ color: 'var(--text-success)' }}> ({responseTime}ms)</span>}
                     </span>
                   </div>

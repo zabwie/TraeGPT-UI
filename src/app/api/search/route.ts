@@ -1,0 +1,85 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(req: NextRequest) {
+  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+  const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
+  
+  if (!GOOGLE_API_KEY) {
+    return NextResponse.json({ error: 'Google API key not set on server.' }, { status: 500 });
+  }
+  
+  if (!GOOGLE_CSE_ID) {
+    return NextResponse.json({ error: 'Google Custom Search Engine ID not set on server.' }, { status: 500 });
+  }
+  
+  try {
+    const { query, numResults = 5 } = await req.json();
+    
+    if (!query || typeof query !== 'string') {
+      return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 });
+    }
+    
+    console.log('[Web Search] Searching for:', query);
+    
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    const start = Date.now();
+    const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${numResults}`;
+    
+    const response = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    const elapsed = Date.now() - start;
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Web Search] Google API error:', response.status, errorText);
+      return NextResponse.json({ 
+        error: 'Web search failed', 
+        detail: errorText,
+        status: response.status 
+      }, { status: response.status });
+    }
+    
+    const data = await response.json();
+    console.log('[Web Search] Success, elapsed:', elapsed + 'ms, results:', data.items?.length || 0);
+    
+    // Format the search results for the AI
+    let searchResults = `Web search results for "${query}":\n\n`;
+    
+    if (data.items && data.items.length > 0) {
+      data.items.forEach((item: any, index: number) => {
+        searchResults += `${index + 1}. ${item.title}\n`;
+        searchResults += `   URL: ${item.link}\n`;
+        searchResults += `   Snippet: ${item.snippet}\n\n`;
+      });
+    } else {
+      searchResults += "No relevant results found.\n";
+    }
+    
+    return NextResponse.json({
+      results: searchResults,
+      raw_data: data,
+      search_time: elapsed / 1000,
+      query: query
+    });
+    
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return NextResponse.json({ error: 'Web search timeout' }, { status: 408 });
+    }
+    console.error('[Web Search] Error:', err);
+    return NextResponse.json({ 
+      error: 'Web search failed', 
+      detail: String(err) 
+    }, { status: 500 });
+  }
+} 

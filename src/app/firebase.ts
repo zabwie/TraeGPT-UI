@@ -149,30 +149,8 @@ export const loadUserPreferences = async (userId: string): Promise<UserPreferenc
   return docSnap.exists() ? (docSnap.data() as UserPreferences) : {};
 };
 
-function deepFlattenArray(arr: unknown[]): unknown[] {
-  return arr.reduce<unknown[]>((acc, val) =>
-    Array.isArray(val)
-      ? acc.concat(deepFlattenArray(val as unknown[]))
-      : acc.concat([val])
-  , []);
-}
-
-function flattenNestedArrays(obj: unknown): unknown {
-  if (Array.isArray(obj)) {
-    // Recursively flatten all nested arrays
-    return deepFlattenArray((obj as unknown[]).map(flattenNestedArrays));
-  } else if (typeof obj === 'object' && obj !== null) {
-    const newObj: Record<string, unknown> = {};
-    for (const key in obj as Record<string, unknown>) {
-      newObj[key] = flattenNestedArrays((obj as Record<string, unknown>)[key]);
-    }
-    return newObj;
-  }
-  return obj;
-} 
-
 // Function to remove undefined values from objects
-function removeUndefinedValues(obj: any): any {
+function removeUndefinedValues(obj: unknown): unknown {
   if (obj === null || obj === undefined) {
     return null;
   }
@@ -182,8 +160,8 @@ function removeUndefinedValues(obj: any): any {
   }
   
   if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const [key, value] of Object.entries(obj)) {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (value !== undefined) {
         cleaned[key] = removeUndefinedValues(value);
       }

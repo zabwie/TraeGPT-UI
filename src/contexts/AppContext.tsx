@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { User } from 'firebase/auth';
-import { Message, ChatSession, UserPreferences, FileType } from '../types';
+import { Message, ChatSession, FileType } from '../types';
 
 // State interface
 interface AppState {

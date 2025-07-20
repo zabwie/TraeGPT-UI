@@ -12,9 +12,8 @@ interface ChatInputProps {
   setShowPlusMenu: (value: boolean) => void;
   fileType: 'images' | 'attachments' | 'documents';
   setFileType: (value: 'images' | 'attachments' | 'documents') => void;
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
@@ -27,7 +26,6 @@ export default function ChatInput({
   showPlusMenu,
   setShowPlusMenu,
   setFileType,
-  onFileChange,
   onKeyDown,
   textareaRef,
   fileInputRef

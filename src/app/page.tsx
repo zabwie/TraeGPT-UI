@@ -544,7 +544,6 @@ export default function Home() {
           setShowPlusMenu={setShowPlusMenu}
           fileType={fileType}
           setFileType={setFileType}
-          onFileChange={handleFileChange}
           onKeyDown={handleKeyDown}
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}

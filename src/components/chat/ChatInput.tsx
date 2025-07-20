@@ -14,7 +14,7 @@ interface ChatInputProps {
   setFileType: (value: 'images' | 'attachments' | 'documents') => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export default function ChatInput({
@@ -57,7 +57,7 @@ export default function ChatInput({
                     <button 
                       onClick={() => {
                         setFileType('images');
-                        if (fileInputRef.current) {
+                        if (fileInputRef?.current) {
                           fileInputRef.current.accept = 'image/*';
                           fileInputRef.current.click();
                         }
@@ -73,7 +73,7 @@ export default function ChatInput({
                     <button 
                       onClick={() => {
                         setFileType('attachments');
-                        if (fileInputRef.current) {
+                        if (fileInputRef?.current) {
                           fileInputRef.current.accept = '';
                           fileInputRef.current.click();
                         }
@@ -89,7 +89,7 @@ export default function ChatInput({
                     <button 
                       onClick={() => {
                         setFileType('documents');
-                        if (fileInputRef.current) {
+                        if (fileInputRef?.current) {
                           fileInputRef.current.accept = '.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
                           fileInputRef.current.click();
                         }

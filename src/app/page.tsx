@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
-import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, Message, ChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
+import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { generateSessionTitle } from '../utils';
 import { Message as MessageType, ChatSession as ChatSessionType, UserPreferences, FileType } from '../types';
@@ -41,12 +41,6 @@ export default function Home() {
   const [answerStyle, setAnswerStyle] = useState("");
   const [customPersonality, setCustomPersonality] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
-  
-  // Add state to hold the last saved personalization settings
-  const [savedUserName, setSavedUserName] = useState("");
-  const [savedUserInterests, setSavedUserInterests] = useState("");
-  const [savedAnswerStyle, setSavedAnswerStyle] = useState("");
-  const [savedCustomPersonality, setSavedCustomPersonality] = useState("");
   
   // Add loading state for preferences
   const [prefsLoading, setPrefsLoading] = useState(false);
@@ -135,12 +129,6 @@ export default function Home() {
           setUserInterests(prefs.userInterests || '');
           setAnswerStyle(prefs.answerStyle || '');
           setCustomPersonality(prefs.customPersonality || '');
-          
-          // Set saved values for comparison
-          setSavedUserName(prefs.userName || '');
-          setSavedUserInterests(prefs.userInterests || '');
-          setSavedAnswerStyle(prefs.answerStyle || '');
-          setSavedCustomPersonality(prefs.customPersonality || '');
         })
         .catch(console.error)
         .finally(() => setPrefsLoading(false));
@@ -195,12 +183,6 @@ export default function Home() {
       };
       
       await saveUserPreferences(user.uid, prefs);
-      
-      // Update saved values
-      setSavedUserName(userName);
-      setSavedUserInterests(userInterests);
-      setSavedAnswerStyle(answerStyle);
-      setSavedCustomPersonality(customPersonality);
       
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 2000);

@@ -2,47 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, User } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy, deleteDoc, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
-export interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  imageUrl?: string;
-  imageResult?: {
-    caption?: string;
-    object_detection?: Array<{
-      class: string;
-      confidence: number;
-    }>;
-    text_extraction?: Array<{
-      text: string;
-      confidence: number;
-    }>;
-    classification?: Array<{
-      class: string;
-      confidence: number;
-    }>;
-    analysis_time?: number;
-  };
-  fileUrl?: string;
-  fileName?: string;
-  fileType?: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Define a type for user preferences
-export interface UserPreferences {
-  userName?: string;
-  userInterests?: string;
-  answerStyle?: string;
-  customPersonality?: string;
-}
+import { Message, ChatSession, UserPreferences } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAIxQzSwBC1qD98vdt1hmJwAFYTYerYGsw",

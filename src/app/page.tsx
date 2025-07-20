@@ -104,7 +104,6 @@ function HomeContent() {
                 key={i}
                 message={msg}
                 isLatestAssistant={i === state.messages.length - 1 && msg.role === "assistant"}
-                imagePreviewUrl={state.imagePreviewUrl}
               />
             ))}
             
@@ -126,8 +125,8 @@ function HomeContent() {
           setUserName={(value: string) => dispatch({ type: 'SET_USER_NAME', payload: value })}
           userInterests={state.userInterests}
           setUserInterests={(value: string) => dispatch({ type: 'SET_USER_INTERESTS', payload: value })}
-          answerStyle={state.answerStyle}
-          setAnswerStyle={(value: string) => dispatch({ type: 'SET_ANSWER_STYLE', payload: value })}
+          answerStyle={state.answerStyle || undefined}
+          setAnswerStyle={(value: 'friendly' | 'formal' | 'concise' | 'detailed' | undefined) => dispatch({ type: 'SET_ANSWER_STYLE', payload: value })}
           customPersonality={state.customPersonality}
           setCustomPersonality={(value: string) => dispatch({ type: 'SET_CUSTOM_PERSONALITY', payload: value })}
           ocrLang={state.ocrLang}

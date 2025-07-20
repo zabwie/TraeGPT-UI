@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatSession } from '../../app/firebase';
+import { ChatSession } from '../../types';
 
 interface SidebarProps {
   isOpen: boolean;

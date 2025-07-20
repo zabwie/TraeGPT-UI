@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { User } from 'firebase/auth';
-import { Message, ChatSession, FileType } from '../types';
+import { Message, ChatSession, FileType, UserPreferences } from '../types';
 
 // State interface
 interface AppState {
@@ -31,7 +31,7 @@ interface AppState {
   // User preferences
   userName: string;
   userInterests: string;
-  answerStyle: string;
+  answerStyle: UserPreferences['answerStyle'];
   customPersonality: string;
   settingsSaved: boolean;
   prefsLoading: boolean;
@@ -65,7 +65,7 @@ type AppAction =
   | { type: 'SET_AUTH_LOADING'; payload: boolean }
   | { type: 'SET_USER_NAME'; payload: string }
   | { type: 'SET_USER_INTERESTS'; payload: string }
-  | { type: 'SET_ANSWER_STYLE'; payload: string }
+  | { type: 'SET_ANSWER_STYLE'; payload: UserPreferences['answerStyle'] }
   | { type: 'SET_CUSTOM_PERSONALITY'; payload: string }
   | { type: 'SET_SETTINGS_SAVED'; payload: boolean }
   | { type: 'SET_PREFS_LOADING'; payload: boolean }
@@ -94,7 +94,7 @@ const initialState: AppState = {
   authLoading: true,
   userName: '',
   userInterests: '',
-  answerStyle: '',
+  answerStyle: undefined,
   customPersonality: '',
   settingsSaved: false,
   prefsLoading: false,

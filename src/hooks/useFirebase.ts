@@ -3,7 +3,20 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession, saveUserPreferences, loadUserPreferences } from '../app/firebase';
 import { useApp } from '../contexts/AppContext';
 import { generateSessionTitle } from '../utils';
-import { Message, ChatSession, UserPreferences } from '../types';
+import { 
+  Message, 
+  ChatSession, 
+  UserPreferences, 
+  UserMessage,
+  ValidationResult 
+} from '../types';
+import { 
+  handleError, 
+  validateChatSession, 
+  validateUserPreferences,
+  withRetry,
+  withTimeout 
+} from '../utils/errorHandling';
 
 export function useFirebase() {
   const { state, dispatch } = useApp();
@@ -18,9 +31,15 @@ export function useFirebase() {
       
       if (user) {
         // Load chat sessions for authenticated user
-        const sessions = await loadChatSessions(user.uid);
-        dispatch({ type: 'SET_CHAT_SESSIONS', payload: sessions });
-        chatSessionsRef.current = sessions;
+        try {
+          const sessions = await withRetry(() => loadChatSessions(user.uid));
+          dispatch({ type: 'SET_CHAT_SESSIONS', payload: sessions });
+          chatSessionsRef.current = sessions;
+        } catch (error) {
+          console.error('Error loading chat sessions:', error);
+          const appError = handleError(error);
+          dispatch({ type: 'SET_ERROR', payload: appError.message });
+        }
       }
     });
 
@@ -30,21 +49,32 @@ export function useFirebase() {
   // Auto-sign in if not authenticated
   useEffect(() => {
     if (!state.authLoading && !state.user) {
-      signInUser().catch(console.error);
+      signInUser().catch((error) => {
+        console.error('Auto sign-in failed:', error);
+        const appError = handleError(error);
+        dispatch({ type: 'SET_ERROR', payload: appError.message });
+      });
     }
-  }, [state.authLoading, state.user]);
+  }, [state.authLoading, state.user, dispatch]);
 
   // Update current session when messages change - with debounced save
   useEffect(() => {
     if (state.currentSessionId && state.messages.length > 0 && state.user) {
       const updatedSession = chatSessionsRef.current.find(s => s.id === state.currentSessionId);
       if (updatedSession) {
-        const newSession = { 
+        const newSession: ChatSession = { 
           ...updatedSession, 
           messages: state.messages, 
           title: generateSessionTitle(state.messages),
           updatedAt: new Date() 
         };
+        
+        // Validate the session before saving
+        const validation: ValidationResult = validateChatSession(newSession);
+        if (!validation.isValid) {
+          console.error('Invalid session data:', validation.errors);
+          return;
+        }
         
         // Update the session in the ref
         chatSessionsRef.current = chatSessionsRef.current.map(s => 
@@ -58,11 +88,13 @@ export function useFirebase() {
         
         saveTimeoutRef.current = setTimeout(async () => {
           try {
-            await saveChatSession(state.user!.uid, newSession);
+            await withRetry(() => saveChatSession(state.user!.uid, newSession));
             // Update the sessions state
             dispatch({ type: 'SET_CHAT_SESSIONS', payload: chatSessionsRef.current });
           } catch (error) {
             console.error('Error saving chat session:', error);
+            const appError = handleError(error);
+            dispatch({ type: 'SET_ERROR', payload: appError.message });
           }
         }, 1000); // Save after 1 second of inactivity
       }
@@ -79,26 +111,54 @@ export function useFirebase() {
   useEffect(() => {
     if (state.user) {
       dispatch({ type: 'SET_PREFS_LOADING', payload: true });
-      loadUserPreferences(state.user.uid)
+      
+      withRetry(() => loadUserPreferences(state.user!.uid))
         .then((prefs: UserPreferences) => {
+          // Validate preferences before setting
+          const validation: ValidationResult = validateUserPreferences(prefs);
+          if (!validation.isValid) {
+            console.warn('Invalid preferences data:', validation.errors);
+            // Use default values for invalid preferences
+            prefs = {};
+          }
+          
+          // Ensure answerStyle is a valid type
+          const validAnswerStyle: UserPreferences['answerStyle'] = 
+            prefs.answerStyle && 
+            ['friendly', 'formal', 'concise', 'detailed'].includes(prefs.answerStyle) 
+            ? (prefs.answerStyle as 'friendly' | 'formal' | 'concise' | 'detailed')
+            : undefined;
+          
           dispatch({ type: 'SET_USER_NAME', payload: prefs.userName || '' });
           dispatch({ type: 'SET_USER_INTERESTS', payload: prefs.userInterests || '' });
-          dispatch({ type: 'SET_ANSWER_STYLE', payload: prefs.answerStyle || '' });
+          dispatch({ type: 'SET_ANSWER_STYLE', payload: validAnswerStyle });
           dispatch({ type: 'SET_CUSTOM_PERSONALITY', payload: prefs.customPersonality || '' });
         })
-        .catch(console.error)
+        .catch((error) => {
+          console.error('Error loading user preferences:', error);
+          const appError = handleError(error);
+          dispatch({ type: 'SET_ERROR', payload: appError.message });
+        })
         .finally(() => dispatch({ type: 'SET_PREFS_LOADING', payload: false }));
     }
   }, [state.user, dispatch]);
 
   // Firebase operations
-  const handleNewChat = () => {
+  const handleNewChat = (): void => {
     dispatch({ type: 'RESET_CHAT' });
   };
 
-  const loadChatSession = async (sessionId: string) => {
+  const loadChatSession = async (sessionId: string): Promise<void> => {
     const session = state.chatSessions.find(s => s.id === sessionId);
     if (session) {
+      // Validate the session before loading
+      const validation: ValidationResult = validateChatSession(session);
+      if (!validation.isValid) {
+        console.error('Invalid session data:', validation.errors);
+        dispatch({ type: 'SET_ERROR', payload: 'Invalid session data' });
+        return;
+      }
+      
       dispatch({ type: 'SET_MESSAGES', payload: session.messages });
       dispatch({ type: 'SET_CURRENT_SESSION_ID', payload: sessionId });
       dispatch({ type: 'SET_IMAGE', payload: null });
@@ -107,10 +167,10 @@ export function useFirebase() {
     }
   };
 
-  const handleDeleteChatSession = async (sessionId: string) => {
+  const handleDeleteChatSession = async (sessionId: string): Promise<void> => {
     if (state.user) {
       try {
-        await deleteChatSession(state.user.uid, sessionId);
+        await withRetry(() => deleteChatSession(state.user!.uid, sessionId));
         const updatedSessions = state.chatSessions.filter(s => s.id !== sessionId);
         dispatch({ type: 'SET_CHAT_SESSIONS', payload: updatedSessions });
         chatSessionsRef.current = updatedSessions;
@@ -120,11 +180,13 @@ export function useFirebase() {
         }
       } catch (error) {
         console.error('Error deleting chat session:', error);
+        const appError = handleError(error);
+        dispatch({ type: 'SET_ERROR', payload: appError.message });
       }
     }
   };
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = async (): Promise<void> => {
     if (!state.user) return;
     
     try {
@@ -135,16 +197,26 @@ export function useFirebase() {
         customPersonality: state.customPersonality
       };
       
-      await saveUserPreferences(state.user.uid, prefs);
+      // Validate preferences before saving
+      const validation: ValidationResult = validateUserPreferences(prefs);
+      if (!validation.isValid) {
+        console.error('Invalid preferences data:', validation.errors);
+        dispatch({ type: 'SET_ERROR', payload: validation.errors[0].message });
+        return;
+      }
+      
+      await withRetry(() => saveUserPreferences(state.user!.uid, prefs));
       
       dispatch({ type: 'SET_SETTINGS_SAVED', payload: true });
       setTimeout(() => dispatch({ type: 'SET_SETTINGS_SAVED', payload: false }), 2000);
     } catch (error) {
       console.error('Error saving preferences:', error);
+      const appError = handleError(error);
+      dispatch({ type: 'SET_ERROR', payload: appError.message });
     }
   };
 
-  const createNewSession = (userMessage: Message) => {
+  const createNewSession = (userMessage: UserMessage): ChatSession | null => {
     if (!state.user) return null;
     
     const sessionId = Date.now().toString();
@@ -155,6 +227,14 @@ export function useFirebase() {
       createdAt: new Date(),
       updatedAt: new Date()
     };
+    
+    // Validate the session before creating
+    const validation: ValidationResult = validateChatSession(newSession);
+    if (!validation.isValid) {
+      console.error('Invalid session data:', validation.errors);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to create session' });
+      return null;
+    }
     
     dispatch({ type: 'SET_CURRENT_SESSION_ID', payload: sessionId });
     dispatch({ type: 'ADD_CHAT_SESSION', payload: newSession });

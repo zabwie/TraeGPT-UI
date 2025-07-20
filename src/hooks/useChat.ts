@@ -2,16 +2,39 @@ import { useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useFirebase } from './useFirebase';
 import { uploadImageAndGetUrl } from '../app/firebase';
-import { Message, ImageResult } from '../types';
+import { 
+  Message, 
+  ImageResult, 
+  TogetherAIResponse, 
+  WebSearchResponse,
+  ImageCaptionResponse,
+  ImageDetectionResponse,
+  ImageClassificationResponse,
+  ImageAnalyzeResponse,
+  UserMessage,
+  AssistantMessage,
+  ChatRequest,
+  SearchRequest,
+  PerformanceMetrics
+} from '../types';
+import { 
+  handleError, 
+  createApiError, 
+  withRetry, 
+  withTimeout,
+  validateMessage 
+} from '../utils/errorHandling';
+import { usePerformanceMeasurement } from '../utils/performance';
 
 export function useChat() {
   const { state, dispatch } = useApp();
   const { createNewSession } = useFirebase();
+  const { measureAsync } = usePerformanceMeasurement();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const buildSystemPrompt = () => {
+  const buildSystemPrompt = (): string => {
     let systemPrompt = "You are TraeGPT, a helpful AI assistant. You can help with various tasks including coding, analysis, and general questions.";
     
     // Add personalization based on user preferences
@@ -47,16 +70,38 @@ export function useChat() {
     return systemPrompt;
   };
 
-  const sendMessage = async () => {
+  const createUserMessage = (content: string, imageUrl?: string, imageResult?: ImageResult): UserMessage => {
+    return {
+      role: 'user',
+      content: content.trim(),
+      imageUrl,
+      imageResult
+    };
+  };
+
+  const createAssistantMessage = (content: string): AssistantMessage => {
+    return {
+      role: 'assistant',
+      content
+    };
+  };
+
+  const sendMessage = async (): Promise<void> => {
     if (!state.input.trim() && !state.image) return;
     
-    const userMessage: Message = {
-      role: 'user',
-      content: state.input.trim(),
-      imageUrl: state.image ? state.imagePreviewUrl || undefined : undefined
-    };
+    const userMessage: UserMessage = createUserMessage(
+      state.input.trim(),
+      state.image ? state.imagePreviewUrl || undefined : undefined
+    );
     
-    const newMessages = [...state.messages, userMessage];
+    // Validate the message before sending
+    const validation = validateMessage(userMessage);
+    if (!validation.isValid) {
+      dispatch({ type: 'SET_ERROR', payload: validation.errors[0].message });
+      return;
+    }
+    
+    const newMessages: Message[] = [...state.messages, userMessage];
     dispatch({ type: 'SET_MESSAGES', payload: newMessages });
     dispatch({ type: 'SET_INPUT', payload: "" });
     dispatch({ type: 'SET_IMAGE', payload: null });
@@ -71,8 +116,6 @@ export function useChat() {
     }
     
     try {
-      const startTime = Date.now();
-      
       // Check if we need to do web search
       const shouldWebSearch = state.input.toLowerCase().includes('search') || 
                              state.input.toLowerCase().includes('find') || 
@@ -84,14 +127,26 @@ export function useChat() {
       if (shouldWebSearch) {
         dispatch({ type: 'SET_WEB_SEARCHING', payload: true });
         try {
-          const searchResponse = await fetch('/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: state.input, numResults: 3 })
-          });
+          const searchRequest: SearchRequest = {
+            query: state.input,
+            numResults: 3
+          };
+          
+          const searchResponse = await measureAsync(
+            () => withTimeout(
+              fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(searchRequest)
+              }),
+              10000,
+              'Web search timed out'
+            ),
+            'web-search'
+          );
           
           if (searchResponse.ok) {
-            const searchData = await searchResponse.json();
+            const searchData: WebSearchResponse = await searchResponse.json();
             searchResults = searchData.results;
           }
         } catch (error) {
@@ -111,44 +166,49 @@ export function useChat() {
       if (state.image) {
         try {
           // Upload image to Firebase
-          const imageUrl = await uploadImageAndGetUrl(state.image, state.user?.uid || 'anonymous');
+          const imageUrl = await measureAsync(
+            () => withRetry(() => 
+              uploadImageAndGetUrl(state.image!, state.user?.uid || 'anonymous')
+            ),
+            'image-upload'
+          );
           
           // Analyze image
           const formData = new FormData();
           formData.append('file', state.image);
           
           const [captionRes, detectRes, classifyRes, analyzeRes] = await Promise.all([
-            fetch('/api/image/caption', { method: 'POST', body: formData }),
-            fetch('/api/image/detect', { method: 'POST', body: formData }),
-            fetch('/api/image/classify', { method: 'POST', body: formData }),
-            fetch('/api/image/analyze', { method: 'POST', body: formData })
+            measureAsync(() => withTimeout(fetch('/api/image/caption', { method: 'POST', body: formData }), 15000), 'image-caption'),
+            measureAsync(() => withTimeout(fetch('/api/image/detect', { method: 'POST', body: formData }), 15000), 'image-detect'),
+            measureAsync(() => withTimeout(fetch('/api/image/classify', { method: 'POST', body: formData }), 15000), 'image-classify'),
+            measureAsync(() => withTimeout(fetch('/api/image/analyze', { method: 'POST', body: formData }), 15000), 'image-analyze')
           ]);
           
           const imageResult: ImageResult = {};
           
           if (captionRes.ok) {
-            const captionData = await captionRes.json();
+            const captionData: ImageCaptionResponse[] = await captionRes.json();
             if (captionData[0]?.generated_text) {
               imageResult.caption = captionData[0].generated_text;
             }
           }
           
           if (detectRes.ok) {
-            const detectData = await detectRes.json();
+            const detectData: ImageDetectionResponse = await detectRes.json();
             if (detectData.length > 0) {
               imageResult.object_detection = detectData.slice(0, 5);
             }
           }
           
           if (classifyRes.ok) {
-            const classifyData = await classifyRes.json();
+            const classifyData: ImageClassificationResponse = await classifyRes.json();
             if (classifyData.length > 0) {
               imageResult.classification = classifyData.slice(0, 5);
             }
           }
           
           if (analyzeRes.ok) {
-            const analyzeData = await analyzeRes.json();
+            const analyzeData: ImageAnalyzeResponse = await analyzeRes.json();
             if (analyzeData.description) {
               imageResult.description = analyzeData.description;
             }
@@ -168,45 +228,59 @@ export function useChat() {
           finalContent += `\n\nImage Analysis: ${JSON.stringify(imageResult)}`;
         } catch (error) {
           console.error('Image processing error:', error);
+          const appError = handleError(error);
+          dispatch({ type: 'SET_ERROR', payload: appError.message });
         }
       }
       
       // Call TogetherAI API
-      const togetherResponse = await fetch('/api/togetherai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: buildSystemPrompt() },
-            ...state.messages,
-            { role: 'user', content: finalContent }
-          ]
-        })
-      });
-      
-      if (!togetherResponse.ok) {
-        throw new Error(`API error: ${togetherResponse.status}`);
-      }
-      
-      const togetherData = await togetherResponse.json();
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: togetherData.choices[0]?.message?.content || 'Sorry, I encountered an error.'
+      const chatRequest: ChatRequest = {
+        messages: [
+          { role: 'system', content: buildSystemPrompt() },
+          ...state.messages,
+          { role: 'user', content: finalContent }
+        ]
       };
       
-      const finalMessages = [...state.messages, userMessage, assistantMessage];
+      const togetherResponse = await measureAsync(
+        () => withTimeout(
+          fetch('/api/togetherai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(chatRequest)
+          }),
+          30000,
+          'AI response timed out'
+        ),
+        'together-ai'
+      );
+      
+      if (!togetherResponse.ok) {
+        throw createApiError(`API error: ${togetherResponse.status}`, togetherResponse.status);
+      }
+      
+      const togetherData: TogetherAIResponse = await togetherResponse.json();
+      const assistantMessage: AssistantMessage = createAssistantMessage(
+        togetherData.choices[0]?.message?.content || 'Sorry, I encountered an error.'
+      );
+      
+      const finalMessages: Message[] = [...state.messages, userMessage, assistantMessage];
       dispatch({ type: 'SET_MESSAGES', payload: finalMessages });
-      dispatch({ type: 'SET_RESPONSE_TIME', payload: Date.now() - startTime });
+      
+      // The performance metrics are already recorded by measureAsync
+      // We just need to set the response time for UI display
+      dispatch({ type: 'SET_RESPONSE_TIME', payload: Date.now() - (Date.now() - (togetherResponse.headers.get('x-response-time') ? parseInt(togetherResponse.headers.get('x-response-time')!) : 0)) });
       
     } catch (error) {
       console.error('Error sending message:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to send message. Please try again.' });
+      const appError = handleError(error);
+      dispatch({ type: 'SET_ERROR', payload: appError.message });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
       if (state.fileType === 'images') {
@@ -224,7 +298,7 @@ export function useChat() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();

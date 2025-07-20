@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'firebase/auth';
+import { UserPreferences } from '../../types';
 
 interface ToolsPanelProps {
   isVisible: boolean;
@@ -9,8 +10,8 @@ interface ToolsPanelProps {
   setUserName: (value: string) => void;
   userInterests: string;
   setUserInterests: (value: string) => void;
-  answerStyle: string;
-  setAnswerStyle: (value: string) => void;
+  answerStyle: UserPreferences['answerStyle'];
+  setAnswerStyle: (value: UserPreferences['answerStyle']) => void;
   customPersonality: string;
   setCustomPersonality: (value: string) => void;
   ocrLang: string;
@@ -85,7 +86,7 @@ export default function ToolsPanel({
           <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Preferred Answer Style</label>
           <select
             value={answerStyle}
-            onChange={e => setAnswerStyle(e.target.value)}
+            onChange={e => setAnswerStyle(e.target.value as UserPreferences['answerStyle'])}
             className="w-full px-3 py-2 rounded-lg"
             style={{ background: 'var(--input-bar-bg)', border: '1px solid var(--input-bar-border)', color: 'var(--text-main)' }}
             disabled={loading || !user || prefsLoading}

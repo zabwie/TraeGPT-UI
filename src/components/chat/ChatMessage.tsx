@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { Message, UserMessage } from '../../types';
 import CodeBlock from '../ui/CodeBlock';
 import TypewriterMarkdown from '../ui/TypewriterMarkdown';
@@ -18,9 +19,11 @@ export default function ChatMessage({ message, isLatestAssistant }: ChatMessageP
         {/* User message with image */}
         {isUser && userMessage.imageUrl && (
           <div className="mb-3">
-            <img 
+            <Image 
               src={userMessage.imageUrl} 
               alt="User uploaded" 
+              width={320}
+              height={240}
               className="max-w-xs rounded-lg"
               style={{ maxHeight: '200px', objectFit: 'cover' }}
             />

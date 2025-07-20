@@ -14,8 +14,7 @@ import {
   UserMessage,
   AssistantMessage,
   ChatRequest,
-  SearchRequest,
-  PerformanceMetrics
+  SearchRequest
 } from '../types';
 import { 
   handleError, 

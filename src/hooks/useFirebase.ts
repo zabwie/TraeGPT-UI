@@ -4,7 +4,6 @@ import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession,
 import { useApp } from '../contexts/AppContext';
 import { generateSessionTitle } from '../utils';
 import { 
-  Message, 
   ChatSession, 
   UserPreferences, 
   UserMessage,
@@ -14,8 +13,7 @@ import {
   handleError, 
   validateChatSession, 
   validateUserPreferences,
-  withRetry,
-  withTimeout 
+  withRetry
 } from '../utils/errorHandling';
 
 export function useFirebase() {

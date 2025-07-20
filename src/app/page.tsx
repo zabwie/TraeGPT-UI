@@ -153,7 +153,6 @@ function HomeContent() {
           setShowPlusMenu={(value: boolean) => dispatch({ type: 'SET_SHOW_PLUS_MENU', payload: value })}
           fileType={state.fileType}
           setFileType={(value: 'images' | 'attachments' | 'documents') => dispatch({ type: 'SET_FILE_TYPE', payload: value })}
-          onFileChange={handleFileChange}
           onKeyDown={handleKeyDown}
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}

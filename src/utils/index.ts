@@ -1,4 +1,5 @@
 // Utility functions
+import { Message } from '../types';
 
 // Add a helper function for timeout
 export function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}, timeout = 15000): Promise<Response> {
@@ -17,7 +18,7 @@ export function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {
 }
 
 // Generate session title from messages
-export function generateSessionTitle(messages: any[]): string {
+export function generateSessionTitle(messages: Message[]): string {
   if (messages.length === 0) return 'New Chat';
   
   const firstUserMessage = messages.find(msg => msg.role === 'user');

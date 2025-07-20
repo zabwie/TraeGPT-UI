@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,7 +26,6 @@ export default function ChatInput({
   imagePreviewUrl,
   showPlusMenu,
   setShowPlusMenu,
-  fileType,
   setFileType,
   onFileChange,
   onKeyDown,

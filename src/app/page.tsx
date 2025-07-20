@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { auth, signInUser, saveChatSession, loadChatSessions, deleteChatSession as fbDeleteChatSession, uploadImageAndGetUrl, saveUserPreferences, loadUserPreferences } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { generateSessionTitle } from '../utils';
-import { Message as MessageType, ChatSession as ChatSessionType, UserPreferences, FileType } from '../types';
+import { Message as MessageType, ChatSession as ChatSessionType, UserPreferences, FileType, ImageResult } from '../types';
 import {
   ChatMessage,
   ChatInput,
@@ -263,12 +263,6 @@ export default function Home() {
     try {
       const startTime = Date.now();
       
-      // Prepare messages for API
-      const apiMessages = [
-        { role: 'system', content: buildSystemPrompt() },
-        ...newMessages
-      ];
-      
       // Check if we need to do web search
       const shouldWebSearch = input.toLowerCase().includes('search') || 
                              input.toLowerCase().includes('find') || 
@@ -320,7 +314,7 @@ export default function Home() {
             fetch('/api/image/analyze', { method: 'POST', body: formData })
           ]);
           
-          const imageResult: any = {};
+          const imageResult: ImageResult = {};
           
           if (captionRes.ok) {
             const captionData = await captionRes.json();
@@ -500,7 +494,6 @@ export default function Home() {
               <ChatMessage
                 key={i}
                 message={msg}
-                index={i}
                 isLatestAssistant={i === messages.length - 1 && msg.role === "assistant"}
                 imagePreviewUrl={imagePreviewUrl}
               />

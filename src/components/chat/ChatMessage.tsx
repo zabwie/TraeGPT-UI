@@ -7,7 +7,6 @@ import { Message } from '../../app/firebase';
 
 interface ChatMessageProps {
   message: Message;
-  index: number;
   isLatestAssistant: boolean;
   imagePreviewUrl?: string | null;
   isPreview?: boolean;
@@ -15,7 +14,6 @@ interface ChatMessageProps {
 
 export default function ChatMessage({ 
   message, 
-  index, 
   isLatestAssistant, 
   imagePreviewUrl, 
   isPreview = false 

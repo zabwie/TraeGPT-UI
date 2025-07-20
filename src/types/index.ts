@@ -2,6 +2,7 @@
 
 export interface ImageResult {
   caption?: string;
+  description?: string;
   object_detection?: Array<{
     class: string;
     confidence: number;

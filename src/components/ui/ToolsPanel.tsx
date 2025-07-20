@@ -1,9 +1,10 @@
 import React from 'react';
+import { User } from 'firebase/auth';
 
 interface ToolsPanelProps {
   isVisible: boolean;
   prefsLoading: boolean;
-  user: any;
+  user: User | null;
   userName: string;
   setUserName: (value: string) => void;
   userInterests: string;

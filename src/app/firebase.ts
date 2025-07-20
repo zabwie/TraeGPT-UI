@@ -87,13 +87,16 @@ export const getCurrentUser = (): User | null => {
 // Chat session functions
 export const saveChatSession = async (userId: string, session: ChatSession): Promise<void> => {
   const sessionRef = doc(db, 'users', userId, 'chatSessions', session.id);
-  const safeMessages = session.messages.map((msg) => flattenNestedArrays(msg));
-  await setDoc(sessionRef, {
+  
+  // Clean the session data by removing undefined values
+  const cleanSession = removeUndefinedValues({
     ...session,
-    messages: safeMessages,
+    messages: session.messages.map((msg) => removeUndefinedValues(msg)),
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString()
   });
+  
+  await setDoc(sessionRef, cleanSession);
 };
 
 export const loadChatSessions = async (userId: string): Promise<ChatSession[]> => {
@@ -165,5 +168,28 @@ function flattenNestedArrays(obj: unknown): unknown {
     }
     return newObj;
   }
+  return obj;
+} 
+
+// Function to remove undefined values from objects
+function removeUndefinedValues(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedValues(item)).filter(item => item !== null);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = removeUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  
   return obj;
 } 

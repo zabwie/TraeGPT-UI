@@ -77,7 +77,7 @@ export function handleError(error: unknown): AppError {
 }
 
 // Validation utilities
-export function validateMessage(message: any): ValidationResult {
+export function validateMessage(message: unknown): ValidationResult {
   const errors: ValidationError[] = [];
   
   if (!message || typeof message !== 'object') {
@@ -85,11 +85,13 @@ export function validateMessage(message: any): ValidationResult {
     return { isValid: false, errors };
   }
   
-  if (!message.role || !['user', 'assistant', 'system'].includes(message.role)) {
+  const messageObj = message as Record<string, unknown>;
+  
+  if (!messageObj.role || !['user', 'assistant', 'system'].includes(messageObj.role as string)) {
     errors.push(createValidationError('role', 'Message must have a valid role'));
   }
   
-  if (!message.content || typeof message.content !== 'string') {
+  if (!messageObj.content || typeof messageObj.content !== 'string') {
     errors.push(createValidationError('content', 'Message must have content'));
   }
   
@@ -99,7 +101,7 @@ export function validateMessage(message: any): ValidationResult {
   };
 }
 
-export function validateChatSession(session: any): ValidationResult {
+export function validateChatSession(session: unknown): ValidationResult {
   const errors: ValidationError[] = [];
   
   if (!session || typeof session !== 'object') {
@@ -107,18 +109,20 @@ export function validateChatSession(session: any): ValidationResult {
     return { isValid: false, errors };
   }
   
-  if (!session.id || typeof session.id !== 'string') {
+  const sessionObj = session as Record<string, unknown>;
+  
+  if (!sessionObj.id || typeof sessionObj.id !== 'string') {
     errors.push(createValidationError('id', 'Session must have an ID'));
   }
   
-  if (!session.title || typeof session.title !== 'string') {
+  if (!sessionObj.title || typeof sessionObj.title !== 'string') {
     errors.push(createValidationError('title', 'Session must have a title'));
   }
   
-  if (!Array.isArray(session.messages)) {
+  if (!Array.isArray(sessionObj.messages)) {
     errors.push(createValidationError('messages', 'Session must have messages array'));
   } else {
-    session.messages.forEach((message: any, index: number) => {
+    (sessionObj.messages as unknown[]).forEach((message: unknown, index: number) => {
       const messageValidation = validateMessage(message);
       if (!messageValidation.isValid) {
         messageValidation.errors.forEach(error => {
@@ -128,11 +132,11 @@ export function validateChatSession(session: any): ValidationResult {
     });
   }
   
-  if (!session.createdAt || !(session.createdAt instanceof Date)) {
+  if (!sessionObj.createdAt || !(sessionObj.createdAt instanceof Date)) {
     errors.push(createValidationError('createdAt', 'Session must have a valid creation date'));
   }
   
-  if (!session.updatedAt || !(session.updatedAt instanceof Date)) {
+  if (!sessionObj.updatedAt || !(sessionObj.updatedAt instanceof Date)) {
     errors.push(createValidationError('updatedAt', 'Session must have a valid update date'));
   }
   
@@ -142,7 +146,7 @@ export function validateChatSession(session: any): ValidationResult {
   };
 }
 
-export function validateUserPreferences(prefs: any): ValidationResult {
+export function validateUserPreferences(prefs: unknown): ValidationResult {
   const errors: ValidationError[] = [];
   
   if (!prefs || typeof prefs !== 'object') {
@@ -150,19 +154,21 @@ export function validateUserPreferences(prefs: any): ValidationResult {
     return { isValid: false, errors };
   }
   
-  if (prefs.userName !== undefined && typeof prefs.userName !== 'string') {
+  const prefsObj = prefs as Record<string, unknown>;
+  
+  if (prefsObj.userName !== undefined && typeof prefsObj.userName !== 'string') {
     errors.push(createValidationError('userName', 'User name must be a string'));
   }
   
-  if (prefs.userInterests !== undefined && typeof prefs.userInterests !== 'string') {
+  if (prefsObj.userInterests !== undefined && typeof prefsObj.userInterests !== 'string') {
     errors.push(createValidationError('userInterests', 'User interests must be a string'));
   }
   
-  if (prefs.answerStyle !== undefined && !['friendly', 'formal', 'concise', 'detailed'].includes(prefs.answerStyle)) {
+  if (prefsObj.answerStyle !== undefined && !['friendly', 'formal', 'concise', 'detailed'].includes(prefsObj.answerStyle as string)) {
     errors.push(createValidationError('answerStyle', 'Answer style must be a valid option'));
   }
   
-  if (prefs.customPersonality !== undefined && typeof prefs.customPersonality !== 'string') {
+  if (prefsObj.customPersonality !== undefined && typeof prefsObj.customPersonality !== 'string') {
     errors.push(createValidationError('customPersonality', 'Custom personality must be a string'));
   }
   

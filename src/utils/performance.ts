@@ -50,7 +50,7 @@ export class PerformanceMonitor {
 export const performanceMonitor = new PerformanceMonitor();
 
 // Performance measurement decorator
-export function measurePerformance<T extends (...args: any[]) => any>(
+export function measurePerformance<T extends (...args: unknown[]) => Promise<unknown> | unknown>(
   fn: T,
   operationName: string
 ): T {
@@ -78,7 +78,7 @@ export function measurePerformance<T extends (...args: any[]) => any>(
           modelUsed: operationName,
           timestamp: new Date()
         });
-        return result;
+        return result as ReturnType<T>;
       }
     } catch (error) {
       const endTime = Date.now();
